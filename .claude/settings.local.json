@@ -3,7 +3,8 @@
     "allow": [
       "mcp__apple-docs__get_apple_doc_content",
       "mcp__apple-docs__search_framework_symbols",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ]
   }
 }

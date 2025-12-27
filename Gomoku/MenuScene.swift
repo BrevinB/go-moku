@@ -15,6 +15,12 @@ class MenuScene: SKScene {
     private var coinLabel: SKLabelNode!
     private var particleLayer: SKNode!
 
+    // Track if we've shown the continue prompt this session
+    private static var hasShownContinuePrompt = false
+
+    // Practice mode toggle state
+    private var isPracticeModeEnabled = false
+
     // Theme reference
     private var theme: BoardTheme { ThemeManager.shared.currentTheme }
     private var isZenTheme: Bool { theme.id == "zen" }
@@ -39,6 +45,55 @@ class MenuScene: SKScene {
         setupMenuButtons()
         setupBottomElements()
         startAmbientCoinSparkle()
+
+        // Listen for Game Center notifications
+        NotificationCenter.default.addObserver(self, selector: #selector(onMatchesRefreshed), name: .gameCenterMatchesRefreshed, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(onShouldOpenMatch(_:)), name: .gameCenterShouldOpenMatch, object: nil)
+
+        // Show continue prompt on first launch if there's a saved game
+        if !MenuScene.hasShownContinuePrompt && GameStateManager.shared.hasSavedGame {
+            MenuScene.hasShownContinuePrompt = true
+            // Small delay so the menu renders first
+            let wait = SKAction.wait(forDuration: 0.3)
+            let showPrompt = SKAction.run { [weak self] in
+                self?.showContinuePrompt()
+            }
+            run(SKAction.sequence([wait, showPrompt]))
+        }
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func onMatchesRefreshed() {
+        // Refresh menu to show/hide Continue Online Match button
+        refreshMenuButtons()
+    }
+
+    @objc private func onShouldOpenMatch(_ notification: Notification) {
+        guard let match = notification.object as? GKTurnBasedMatch else { return }
+        openOnlineMatch(match)
+    }
+
+    private func refreshMenuButtons() {
+        // Remove existing menu buttons
+        for name in ["continueGame", "continueOnlineMatch", "playAI", "playFriend", "playOnline", "statistics", "settings"] {
+            enumerateChildNodes(withName: name) { node, _ in
+                node.removeFromParent()
+            }
+        }
+        // Recreate menu buttons
+        setupMenuButtons()
+    }
+
+    private func openOnlineMatch(_ match: GKTurnBasedMatch) {
+        // Navigate to the online game scene with this match
+        let transition = SKTransition.fade(withDuration: 0.4)
+        let scene = OnlineGameScene(size: size)
+        scene.scaleMode = .aspectFill
+        scene.match = match
+        view?.presentScene(scene, transition: transition)
     }
 
     private func setupParticleLayer() {
@@ -546,14 +601,47 @@ class MenuScene: SKScene {
     private let buttonGray = SKColor(red: 0.60, green: 0.62, blue: 0.58, alpha: 1.0)
 
     private func setupMenuButtons() {
-        let startY = size.height / 2 + 100
+        let baseY = size.height / 2 + 100
         let spacing: CGFloat = 72
+
+        // Check if there's a saved game
+        let hasSavedGame = GameStateManager.shared.hasSavedGame
+        let hasPendingOnlineMatch = GameCenterManager.shared.hasPendingMatches
+        var currentY = baseY
+
+        // Show Continue button if saved game exists
+        if hasSavedGame {
+            createMenuButton(
+                title: "Continue Game",
+                subtitle: isZenTheme ? "続きから" : "Resume your game",
+                color: accentRed,
+                position: CGPoint(x: size.width / 2, y: currentY),
+                name: "continueGame"
+            )
+            currentY -= spacing
+        }
+
+        // Show Continue Online Match button if there's a pending match
+        if hasPendingOnlineMatch {
+            let pendingCount = GameCenterManager.shared.pendingTurnMatches.count
+            let subtitle = isZenTheme
+                ? "あなたの番 · Your turn"
+                : (pendingCount == 1 ? "Your turn!" : "\(pendingCount) matches - Your turn!")
+            createMenuButton(
+                title: "Continue Online",
+                subtitle: subtitle,
+                color: buttonBlue,
+                position: CGPoint(x: size.width / 2, y: currentY),
+                name: "continueOnlineMatch"
+            )
+            currentY -= spacing
+        }
 
         createMenuButton(
             title: "Play vs AI",
             subtitle: isZenTheme ? "対AI戦" : "Challenge the computer",
             color: buttonGreen,
-            position: CGPoint(x: size.width / 2, y: startY),
+            position: CGPoint(x: size.width / 2, y: currentY),
             name: "playAI"
         )
 
@@ -561,7 +649,7 @@ class MenuScene: SKScene {
             title: "Play vs Friend",
             subtitle: isZenTheme ? "二人対戦" : "Local 2-player mode",
             color: buttonOrange,
-            position: CGPoint(x: size.width / 2, y: startY - spacing),
+            position: CGPoint(x: size.width / 2, y: currentY - spacing),
             name: "playFriend"
         )
 
@@ -569,7 +657,7 @@ class MenuScene: SKScene {
             title: "Play Online",
             subtitle: isZenTheme ? "オンライン" : "Challenge players worldwide",
             color: buttonBlue,
-            position: CGPoint(x: size.width / 2, y: startY - spacing * 2),
+            position: CGPoint(x: size.width / 2, y: currentY - spacing * 2),
             name: "playOnline"
         )
 
@@ -577,7 +665,7 @@ class MenuScene: SKScene {
             title: "Statistics",
             subtitle: isZenTheme ? "統計" : "View your game stats",
             color: buttonLightBlue,
-            position: CGPoint(x: size.width / 2, y: startY - spacing * 3),
+            position: CGPoint(x: size.width / 2, y: currentY - spacing * 3),
             name: "statistics"
         )
 
@@ -585,7 +673,7 @@ class MenuScene: SKScene {
             title: "Settings",
             subtitle: isZenTheme ? "設定" : "Sound, Haptics & More",
             color: buttonGray,
-            position: CGPoint(x: size.width / 2, y: startY - spacing * 4),
+            position: CGPoint(x: size.width / 2, y: currentY - spacing * 4),
             name: "settings"
         )
     }
@@ -641,7 +729,7 @@ class MenuScene: SKScene {
 
         for node in nodes {
             guard let name = node.name else { continue }
-            if ["playAI", "playFriend", "playOnline", "statistics", "settings", "gameCenter", "shopButton"].contains(name) {
+            if ["playAI", "playFriend", "playOnline", "continueOnlineMatch", "statistics", "settings", "gameCenter", "shopButton"].contains(name) {
                 if let parent = findButtonContainer(node) {
                     parent.run(SKAction.scale(to: 0.96, duration: 0.1))
                 }
@@ -655,7 +743,8 @@ class MenuScene: SKScene {
         let location = touch.location(in: self)
         let nodes = self.nodes(at: location)
 
-        let hasOverlay = children.contains { $0.name == "difficultyOverlay" }
+        let hasDifficultyOverlay = children.contains { $0.name == "difficultyOverlay" }
+        let hasContinuePrompt = children.contains { $0.name == "continuePromptOverlay" }
 
         for node in nodes {
             guard let name = node.name else { continue }
@@ -664,7 +753,9 @@ class MenuScene: SKScene {
                 parent.run(SKAction.scale(to: 1.0, duration: 0.1))
             }
 
-            if hasOverlay {
+            if hasContinuePrompt {
+                handleContinuePromptSelection(name: name)
+            } else if hasDifficultyOverlay {
                 handleDifficultySelection(name: name)
             } else {
                 handleMenuSelection(name: name)
@@ -696,6 +787,8 @@ class MenuScene: SKScene {
         SoundManager.shared.buttonTapped()
 
         switch name {
+        case "continueGame": continueGame()
+        case "continueOnlineMatch": continueOnlineMatch()
         case "playAI": showDifficultySelection()
         case "playFriend": startGame(mode: .twoPlayer, difficulty: .medium)
         case "playOnline": startOnlineGame()
@@ -707,12 +800,38 @@ class MenuScene: SKScene {
         }
     }
 
+    private func continueOnlineMatch() {
+        guard GameCenterManager.shared.isAuthenticated else {
+            showNotAuthenticatedAlert()
+            return
+        }
+
+        // Get pending matches
+        let pendingMatches = GameCenterManager.shared.pendingTurnMatches
+
+        if pendingMatches.count == 1, let match = pendingMatches.first {
+            // Only one match, open it directly
+            openOnlineMatch(match)
+        } else if pendingMatches.count > 1 {
+            // Multiple matches - show the matchmaker UI which lists existing matches
+            guard let vc = view?.window?.rootViewController else { return }
+            GameCenterManager.shared.findMatch(from: vc) { [weak self] match, _ in
+                guard let self = self, let match = match else { return }
+                DispatchQueue.main.async {
+                    self.openOnlineMatch(match)
+                }
+            }
+        }
+    }
+
     private func handleDifficultySelection(name: String) {
         if name.starts(with: "difficulty_") {
             let diffStr = name.replacingOccurrences(of: "difficulty_", with: "")
             let difficulty: AIDifficulty = diffStr == "easy" ? .easy : (diffStr == "hard" ? .hard : .medium)
             SoundManager.shared.buttonTapped()
-            startGame(mode: .vsAI, difficulty: difficulty)
+            startGame(mode: .vsAI, difficulty: difficulty, isPractice: isPracticeModeEnabled)
+        } else if name == "practiceToggle" || name == "practiceToggleKnob" {
+            togglePracticeMode()
         } else if name == "cancelDifficulty" || name == "difficultyOverlay" {
             SoundManager.shared.buttonTapped()
             hideDifficultySelection()
@@ -722,6 +841,9 @@ class MenuScene: SKScene {
     // MARK: - Difficulty Selection
 
     private func showDifficultySelection() {
+        // Reset practice mode when opening dialog
+        isPracticeModeEnabled = false
+
         let overlayColor = theme.statusTextColor.skColor
 
         let overlay = SKShapeNode(rect: CGRect(x: 0, y: 0, width: size.width, height: size.height))
@@ -733,7 +855,7 @@ class MenuScene: SKScene {
         addChild(overlay)
         overlay.run(SKAction.fadeAlpha(to: 1.0, duration: 0.25))
 
-        let modal = SKShapeNode(rectOf: CGSize(width: 300, height: 340), cornerRadius: 16)
+        let modal = SKShapeNode(rectOf: CGSize(width: 300, height: 400), cornerRadius: 16)
         modal.fillColor = theme.statusBackgroundColor.skColor
         modal.strokeColor = theme.statusStrokeColor.skColor
         modal.lineWidth = 2
@@ -752,7 +874,7 @@ class MenuScene: SKScene {
         title.text = isZenTheme ? "難易度選択" : "Select Difficulty"
         title.fontSize = 22
         title.fontColor = theme.statusTextColor.skColor
-        title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 130)
+        title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 160)
         title.zPosition = 102
         title.name = "difficultyOverlay"
         addChild(title)
@@ -762,25 +884,91 @@ class MenuScene: SKScene {
             subtitle.text = "Select Difficulty"
             subtitle.fontSize = 14
             subtitle.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.6)
-            subtitle.position = CGPoint(x: size.width / 2, y: size.height / 2 + 100)
+            subtitle.position = CGPoint(x: size.width / 2, y: size.height / 2 + 130)
             subtitle.zPosition = 102
             subtitle.name = "difficultyOverlay"
             addChild(subtitle)
         }
 
         let yOffset: CGFloat = isZenTheme ? 0 : 15
-        createDifficultyOption(title: "Easy", subtitle: isZenTheme ? "初級" : nil, position: CGPoint(x: size.width / 2, y: size.height / 2 + 40 + yOffset), name: "difficulty_easy")
-        createDifficultyOption(title: "Medium", subtitle: isZenTheme ? "中級" : nil, position: CGPoint(x: size.width / 2, y: size.height / 2 - 25 + yOffset), name: "difficulty_medium")
-        createDifficultyOption(title: "Hard", subtitle: isZenTheme ? "上級" : nil, position: CGPoint(x: size.width / 2, y: size.height / 2 - 90 + yOffset), name: "difficulty_hard")
+        createDifficultyOption(title: "Easy", subtitle: isZenTheme ? "初級" : nil, position: CGPoint(x: size.width / 2, y: size.height / 2 + 70 + yOffset), name: "difficulty_easy")
+        createDifficultyOption(title: "Medium", subtitle: isZenTheme ? "中級" : nil, position: CGPoint(x: size.width / 2, y: size.height / 2 + 5 + yOffset), name: "difficulty_medium")
+        createDifficultyOption(title: "Hard", subtitle: isZenTheme ? "上級" : nil, position: CGPoint(x: size.width / 2, y: size.height / 2 - 60 + yOffset), name: "difficulty_hard")
+
+        // Practice mode toggle
+        createPracticeModeToggle(position: CGPoint(x: size.width / 2, y: size.height / 2 - 130))
 
         let cancel = SKLabelNode(fontNamed: uiFont)
         cancel.text = isZenTheme ? "Cancel · 取消" : "Cancel"
         cancel.fontSize = 14
         cancel.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.6)
-        cancel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 145)
+        cancel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 175)
         cancel.zPosition = 102
         cancel.name = "cancelDifficulty"
         addChild(cancel)
+    }
+
+    private func createPracticeModeToggle(position: CGPoint) {
+        let container = SKNode()
+        container.position = position
+        container.zPosition = 102
+        container.name = "practiceToggle"
+        addChild(container)
+
+        // Toggle background
+        let toggleBg = SKShapeNode(rectOf: CGSize(width: 44, height: 26), cornerRadius: 13)
+        toggleBg.fillColor = isPracticeModeEnabled ? bamboo : theme.buttonBackgroundColor.skColor
+        toggleBg.strokeColor = isPracticeModeEnabled ? bamboo.withAlphaComponent(0.8) : theme.buttonStrokeColor.skColor
+        toggleBg.lineWidth = 1.5
+        toggleBg.position = CGPoint(x: 80, y: 0)
+        toggleBg.name = "practiceToggle"
+        container.addChild(toggleBg)
+
+        // Toggle knob
+        let knob = SKShapeNode(circleOfRadius: 10)
+        knob.fillColor = .white
+        knob.strokeColor = SKColor.gray.withAlphaComponent(0.3)
+        knob.lineWidth = 0.5
+        knob.position = CGPoint(x: isPracticeModeEnabled ? 90 : 70, y: 0)
+        knob.name = "practiceToggleKnob"
+        container.addChild(knob)
+
+        // Label
+        let label = SKLabelNode(fontNamed: uiFont)
+        label.text = isZenTheme ? "Practice Mode · 練習" : "Practice Mode"
+        label.fontSize = 14
+        label.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.8)
+        label.horizontalAlignmentMode = .left
+        label.verticalAlignmentMode = .center
+        label.position = CGPoint(x: -100, y: 0)
+        label.name = "practiceToggle"
+        container.addChild(label)
+
+        // Subtitle
+        let subtitle = SKLabelNode(fontNamed: uiFont)
+        subtitle.text = isZenTheme ? "Stats not recorded" : "Stats not recorded"
+        subtitle.fontSize = 10
+        subtitle.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.5)
+        subtitle.horizontalAlignmentMode = .left
+        subtitle.verticalAlignmentMode = .center
+        subtitle.position = CGPoint(x: -100, y: -16)
+        subtitle.name = "practiceToggle"
+        container.addChild(subtitle)
+    }
+
+    private func togglePracticeMode() {
+        isPracticeModeEnabled.toggle()
+        SoundManager.shared.buttonTapped()
+
+        // Update toggle visual
+        enumerateChildNodes(withName: "practiceToggle") { node, _ in
+            node.removeFromParent()
+        }
+        enumerateChildNodes(withName: "practiceToggleKnob") { node, _ in
+            node.removeFromParent()
+        }
+
+        createPracticeModeToggle(position: CGPoint(x: size.width / 2, y: size.height / 2 - 130))
     }
 
     private func createDifficultyOption(title: String, subtitle: String?, position: CGPoint, name: String) {
@@ -811,21 +999,161 @@ class MenuScene: SKScene {
     }
 
     private func hideDifficultySelection() {
-        for name in ["difficultyOverlay", "cancelDifficulty", "difficulty_easy", "difficulty_medium", "difficulty_hard"] {
+        for name in ["difficultyOverlay", "cancelDifficulty", "difficulty_easy", "difficulty_medium", "difficulty_hard", "practiceToggle", "practiceToggleKnob"] {
             enumerateChildNodes(withName: name) { node, _ in
                 node.run(SKAction.sequence([SKAction.fadeOut(withDuration: 0.2), SKAction.removeFromParent()]))
             }
         }
     }
 
+    // MARK: - Continue Prompt
+
+    private func showContinuePrompt() {
+        let overlayColor = theme.statusTextColor.skColor
+
+        // Background overlay
+        let overlay = SKShapeNode(rect: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        overlay.fillColor = overlayColor.withAlphaComponent(0.5)
+        overlay.strokeColor = .clear
+        overlay.zPosition = 100
+        overlay.name = "continuePromptOverlay"
+        overlay.alpha = 0
+        addChild(overlay)
+        overlay.run(SKAction.fadeAlpha(to: 1.0, duration: 0.25))
+
+        // Modal background
+        let modal = SKShapeNode(rectOf: CGSize(width: 300, height: 220), cornerRadius: 16)
+        modal.fillColor = theme.statusBackgroundColor.skColor
+        modal.strokeColor = theme.statusStrokeColor.skColor
+        modal.lineWidth = 2
+        modal.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        modal.zPosition = 101
+        modal.name = "continuePromptOverlay"
+        modal.setScale(0.9)
+        modal.alpha = 0
+        addChild(modal)
+        modal.run(SKAction.group([
+            SKAction.fadeIn(withDuration: 0.25),
+            SKAction.scale(to: 1.0, duration: 0.25)
+        ]))
+
+        // Title
+        let title = SKLabelNode(fontNamed: uiFontBold)
+        title.text = isZenTheme ? "中断中のゲーム" : "Game in Progress"
+        title.fontSize = 22
+        title.fontColor = theme.statusTextColor.skColor
+        title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 65)
+        title.zPosition = 102
+        title.name = "continuePromptOverlay"
+        title.alpha = 0
+        addChild(title)
+        title.run(SKAction.fadeIn(withDuration: 0.25))
+
+        // Subtitle
+        let subtitle = SKLabelNode(fontNamed: uiFont)
+        subtitle.text = isZenTheme ? "ゲームを続けますか？" : "Would you like to continue?"
+        subtitle.fontSize = 16
+        subtitle.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.8)
+        subtitle.position = CGPoint(x: size.width / 2, y: size.height / 2 + 30)
+        subtitle.zPosition = 102
+        subtitle.name = "continuePromptOverlay"
+        subtitle.alpha = 0
+        addChild(subtitle)
+        subtitle.run(SKAction.fadeIn(withDuration: 0.25))
+
+        // Continue button
+        let continueBtn = SKShapeNode(rectOf: CGSize(width: 240, height: 50), cornerRadius: 12)
+        continueBtn.fillColor = buttonGreen
+        continueBtn.strokeColor = .clear
+        continueBtn.position = CGPoint(x: size.width / 2, y: size.height / 2 - 25)
+        continueBtn.zPosition = 102
+        continueBtn.name = "promptContinue"
+        continueBtn.alpha = 0
+        addChild(continueBtn)
+        continueBtn.run(SKAction.fadeIn(withDuration: 0.25))
+
+        let continueLabel = SKLabelNode(fontNamed: uiFontBold)
+        continueLabel.text = isZenTheme ? "続ける" : "Continue"
+        continueLabel.fontSize = 18
+        continueLabel.fontColor = .white
+        continueLabel.verticalAlignmentMode = .center
+        continueLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 25)
+        continueLabel.zPosition = 103
+        continueLabel.name = "promptContinue"
+        continueLabel.alpha = 0
+        addChild(continueLabel)
+        continueLabel.run(SKAction.fadeIn(withDuration: 0.25))
+
+        // New Game button
+        let newGameBtn = SKShapeNode(rectOf: CGSize(width: 240, height: 50), cornerRadius: 12)
+        newGameBtn.fillColor = buttonGray
+        newGameBtn.strokeColor = .clear
+        newGameBtn.position = CGPoint(x: size.width / 2, y: size.height / 2 - 85)
+        newGameBtn.zPosition = 102
+        newGameBtn.name = "promptNewGame"
+        newGameBtn.alpha = 0
+        addChild(newGameBtn)
+        newGameBtn.run(SKAction.fadeIn(withDuration: 0.25))
+
+        let newGameLabel = SKLabelNode(fontNamed: uiFontBold)
+        newGameLabel.text = isZenTheme ? "新規ゲーム" : "New Game"
+        newGameLabel.fontSize = 18
+        newGameLabel.fontColor = .white
+        newGameLabel.verticalAlignmentMode = .center
+        newGameLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 85)
+        newGameLabel.zPosition = 103
+        newGameLabel.name = "promptNewGame"
+        newGameLabel.alpha = 0
+        addChild(newGameLabel)
+        newGameLabel.run(SKAction.fadeIn(withDuration: 0.25))
+    }
+
+    private func hideContinuePrompt() {
+        enumerateChildNodes(withName: "continuePromptOverlay") { node, _ in
+            node.run(SKAction.sequence([SKAction.fadeOut(withDuration: 0.2), SKAction.removeFromParent()]))
+        }
+        enumerateChildNodes(withName: "promptContinue") { node, _ in
+            node.run(SKAction.sequence([SKAction.fadeOut(withDuration: 0.2), SKAction.removeFromParent()]))
+        }
+        enumerateChildNodes(withName: "promptNewGame") { node, _ in
+            node.run(SKAction.sequence([SKAction.fadeOut(withDuration: 0.2), SKAction.removeFromParent()]))
+        }
+    }
+
+    private func handleContinuePromptSelection(name: String) {
+        SoundManager.shared.buttonTapped()
+
+        if name == "promptContinue" {
+            hideContinuePrompt()
+            continueGame()
+        } else if name == "promptNewGame" || name == "continuePromptOverlay" {
+            hideContinuePrompt()
+        }
+    }
+
     // MARK: - Navigation
 
-    private func startGame(mode: GameMode, difficulty: AIDifficulty) {
+    private func startGame(mode: GameMode, difficulty: AIDifficulty, isPractice: Bool = false) {
         let transition = SKTransition.fade(withDuration: 0.4)
         let scene = GameScene(size: size)
         scene.scaleMode = .aspectFill
         scene.gameMode = mode
         scene.aiDifficulty = difficulty
+        scene.isPracticeMode = isPractice
+        view?.presentScene(scene, transition: transition)
+    }
+
+    private func continueGame() {
+        guard let savedGame = GameStateManager.shared.loadSavedGame() else {
+            return
+        }
+
+        let transition = SKTransition.fade(withDuration: 0.4)
+        let scene = GameScene(size: size)
+        scene.scaleMode = .aspectFill
+        scene.gameMode = savedGame.gameMode
+        scene.aiDifficulty = savedGame.aiDifficulty
+        scene.restoredGame = savedGame
         view?.presentScene(scene, transition: transition)
     }
 

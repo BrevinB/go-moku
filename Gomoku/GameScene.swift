@@ -8,7 +8,7 @@
 import SpriteKit
 import GameplayKit
 
-enum GameMode {
+enum GameMode: String, Codable {
     case twoPlayer
     case vsAI
 }
@@ -51,9 +51,16 @@ class GameScene: SKScene {
     // AI properties
     var gameMode: GameMode = .vsAI
     var aiDifficulty: AIDifficulty = .medium
+    var isPracticeMode: Bool = false
     private var ai: GomokuAI!
     private var humanPlayer: Player = .black
     private var isAIThinking = false
+
+    // Practice mode indicator
+    private var practiceModeLabel: SKLabelNode?
+
+    // Game restoration
+    var restoredGame: SavedGame?
 
     // Theme reference for convenience
     private var theme: BoardTheme { ThemeManager.shared.currentTheme }
@@ -93,20 +100,44 @@ class GameScene: SKScene {
         stonesNode = SKNode()
         addChild(stonesNode)
 
-        // Initialize AI and randomize player color in AI mode
+        // Initialize AI
         ai = GomokuAI(difficulty: aiDifficulty)
-        if gameMode == .vsAI {
-            humanPlayer = Bool.random() ? .black : .white
+
+        // Check if restoring a saved game
+        if let savedGame = restoredGame {
+            // Restore from saved game
+            humanPlayer = savedGame.humanPlayer
+            restoreFromSavedGame(savedGame)
+        } else {
+            // New game - randomize player color in AI mode
+            if gameMode == .vsAI {
+                humanPlayer = Bool.random() ? .black : .white
+            }
         }
 
         setupBoard()
         setupUI()
 
-        // If AI goes first (human is white), trigger AI move
-        if gameMode == .vsAI && board.currentPlayer != humanPlayer {
+        // If restoring, redraw the stones
+        if restoredGame != nil {
+            redrawAllStones()
+        }
+
+        // If AI goes first (human is white) and no moves yet, trigger AI move
+        if gameMode == .vsAI && board.currentPlayer != humanPlayer && board.getMoveHistory().isEmpty {
             isAIThinking = true
             showAIThinkingIndicator()
             let wait = SKAction.wait(forDuration: 1.0)
+            let aiMove = SKAction.run { [weak self] in
+                self?.makeAIMove()
+            }
+            run(SKAction.sequence([wait, aiMove]))
+        }
+        // If it's AI's turn after restore, trigger AI move
+        else if restoredGame != nil && gameMode == .vsAI && board.currentPlayer != humanPlayer {
+            isAIThinking = true
+            showAIThinkingIndicator()
+            let wait = SKAction.wait(forDuration: 0.5)
             let aiMove = SKAction.run { [weak self] in
                 self?.makeAIMove()
             }
@@ -534,6 +565,11 @@ class GameScene: SKScene {
         updateStatusLabel()
         addChild(statusLabel)
 
+        // Practice mode indicator
+        if isPracticeMode {
+            setupPracticeModeIndicator()
+        }
+
         // Back button
         backButton = SKLabelNode(fontNamed: uiFont)
         backButton.text = isZenTheme ? "← 戻る" : "← Menu"
@@ -659,6 +695,38 @@ class GameScene: SKScene {
         let canUndo = board.canUndo()
         undoButton.alpha = canUndo ? 1.0 : 0.4
         undoButtonBackground.alpha = canUndo ? 1.0 : 0.4
+    }
+
+    private func setupPracticeModeIndicator() {
+        let isZenTheme = theme.id == "zen"
+        let uiFont = isZenTheme ? "Hiragino Mincho ProN" : "AvenirNext-Medium"
+
+        // Practice mode badge
+        let badgeContainer = SKNode()
+        badgeContainer.position = CGPoint(x: size.width / 2, y: size.height - 125)
+        badgeContainer.zPosition = 10
+        addChild(badgeContainer)
+
+        let badge = SKShapeNode(rectOf: CGSize(width: 130, height: 24), cornerRadius: 12)
+        badge.fillColor = bamboo.withAlphaComponent(0.2)
+        badge.strokeColor = bamboo.withAlphaComponent(0.5)
+        badge.lineWidth = 1
+        badgeContainer.addChild(badge)
+
+        practiceModeLabel = SKLabelNode(fontNamed: uiFont)
+        practiceModeLabel?.text = isZenTheme ? "練習モード" : "Practice Mode"
+        practiceModeLabel?.fontSize = 12
+        practiceModeLabel?.fontColor = bamboo
+        practiceModeLabel?.verticalAlignmentMode = .center
+        practiceModeLabel?.horizontalAlignmentMode = .center
+        badgeContainer.addChild(practiceModeLabel!)
+
+        // Subtle pulse animation
+        let pulse = SKAction.sequence([
+            SKAction.fadeAlpha(to: 0.7, duration: 1.5),
+            SKAction.fadeAlpha(to: 1.0, duration: 1.5)
+        ])
+        badgeContainer.run(SKAction.repeatForever(pulse))
     }
 
     private func updateStatusLabel() {
@@ -830,6 +898,16 @@ class GameScene: SKScene {
             animateStatusUpdate()
             updateUndoButtonState()
 
+            // Auto-save game state after each move (only saves if game still in progress, skip practice mode)
+            if !isPracticeMode {
+                GameStateManager.shared.saveGame(
+                    board: board,
+                    gameMode: gameMode,
+                    aiDifficulty: aiDifficulty,
+                    humanPlayer: humanPlayer
+                )
+            }
+
             // Check if someone won and celebrate
             if case .won(let winner) = board.gameState {
                 SoundManager.shared.gameWon()
@@ -973,6 +1051,23 @@ class GameScene: SKScene {
     }
 
     private func recordGameStatistics(winner: Player) {
+        // Clear saved game since game is over
+        GameStateManager.shared.clearSavedGame()
+
+        // Skip statistics and history for practice mode
+        if isPracticeMode {
+            return
+        }
+
+        // Save completed game to history for replay
+        GameHistoryManager.shared.saveCompletedGame(
+            board: board,
+            gameMode: gameMode,
+            aiDifficulty: aiDifficulty,
+            humanPlayer: humanPlayer,
+            winner: winner
+        )
+
         let moveCount = board.getMoveHistory().count
 
         if gameMode == .vsAI {
@@ -2747,6 +2842,16 @@ class GameScene: SKScene {
 
         updateStatusLabel()
         updateUndoButtonState()
+
+        // Auto-save after undo (skip practice mode)
+        if !isPracticeMode {
+            GameStateManager.shared.saveGame(
+                board: board,
+                gameMode: gameMode,
+                aiDifficulty: aiDifficulty,
+                humanPlayer: humanPlayer
+            )
+        }
     }
 
     private func addUndoParticles(at position: CGPoint) {
@@ -2775,6 +2880,9 @@ class GameScene: SKScene {
     }
 
     private func resetGame() {
+        // Clear saved game when starting fresh
+        GameStateManager.shared.clearSavedGame()
+
         board.reset()
         stonesNode.removeAllChildren()
         isAIThinking = false
@@ -2815,6 +2923,93 @@ class GameScene: SKScene {
             }
             run(SKAction.sequence([wait, aiMove]))
         }
+    }
+
+    // MARK: - Game Restoration
+
+    private func restoreFromSavedGame(_ savedGame: SavedGame) {
+        // Replay all moves to restore board state
+        for encodedMove in savedGame.moves {
+            let player: Player = encodedMove.playerIndex == 0 ? .black : .white
+            board.currentPlayer = player
+            _ = board.placeStone(at: encodedMove.row, col: encodedMove.col)
+        }
+    }
+
+    private func redrawAllStones() {
+        // Draw all stones from move history without animation
+        for move in board.getMoveHistory() {
+            let player = move.player
+            let row = move.row
+            let col = move.col
+
+            let stoneRadius = cellSize * 0.43
+            let stone = SKShapeNode(circleOfRadius: stoneRadius)
+
+            let stoneColor = player == .black ? theme.blackStoneColor : theme.whiteStoneColor
+            let highlightColor = player == .black ? theme.blackStoneHighlight : theme.whiteStoneHighlight
+
+            stone.fillColor = stoneColor.skColor
+            stone.strokeColor = highlightColor.skColor.withAlphaComponent(0.8)
+            stone.lineWidth = player == .black ? 2 : 2.5
+
+            stone.position = CGPoint(
+                x: boardOffset.x + CGFloat(col) * cellSize,
+                y: boardOffset.y + CGFloat(row) * cellSize
+            )
+            stone.zPosition = 5
+
+            // Add shadow
+            if let stoneShadow = makeShadow(for: stone, offset: CGPoint(x: 0, y: -4), alpha: 0.35) {
+                stonesNode.addChild(stoneShadow)
+                stoneShadow.zPosition = stone.zPosition - 0.5
+            }
+
+            // Apply stone style from theme
+            switch theme.stoneStyle {
+            case .classic, .glossy:
+                let mainHighlight = SKShapeNode(circleOfRadius: stoneRadius * 0.45)
+                let mainHighlightAlpha: CGFloat = theme.stoneStyle == .glossy ? 0.35 : 0.25
+                if player == .black {
+                    mainHighlight.fillColor = highlightColor.skColor.withAlphaComponent(mainHighlightAlpha)
+                } else {
+                    mainHighlight.fillColor = SKColor(white: 1.0, alpha: theme.stoneStyle == .glossy ? 0.5 : 0.4)
+                }
+                mainHighlight.strokeColor = .clear
+                mainHighlight.position = CGPoint(x: -stoneRadius * 0.25, y: stoneRadius * 0.25)
+                stone.addChild(mainHighlight)
+
+                let secondaryHighlight = SKShapeNode(circleOfRadius: stoneRadius * 0.25)
+                let secondaryAlpha: CGFloat = theme.stoneStyle == .glossy ? 0.3 : 0.2
+                if player == .black {
+                    secondaryHighlight.fillColor = highlightColor.skColor.withAlphaComponent(secondaryAlpha)
+                } else {
+                    secondaryHighlight.fillColor = SKColor(white: 1.0, alpha: theme.stoneStyle == .glossy ? 0.7 : 0.6)
+                }
+                secondaryHighlight.strokeColor = .clear
+                secondaryHighlight.position = CGPoint(x: -stoneRadius * 0.3, y: stoneRadius * 0.3)
+                stone.addChild(secondaryHighlight)
+
+                let rimLight = SKShapeNode(circleOfRadius: stoneRadius * 0.95)
+                rimLight.fillColor = .clear
+                let rimAlpha: CGFloat = theme.stoneStyle == .glossy ? 0.25 : 0.15
+                if player == .black {
+                    rimLight.strokeColor = highlightColor.skColor.withAlphaComponent(rimAlpha)
+                } else {
+                    rimLight.strokeColor = SKColor(red: 0.70, green: 0.80, blue: 1.0, alpha: rimAlpha * 2)
+                }
+                rimLight.lineWidth = theme.stoneStyle == .glossy ? 3 : 2
+                stone.addChild(rimLight)
+
+            case .flat:
+                stone.strokeColor = .clear
+            }
+
+            stonesNode.addChild(stone)
+        }
+
+        updateStatusLabel()
+        updateUndoButtonState()
     }
 
     override func update(_ currentTime: TimeInterval) {

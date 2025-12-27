@@ -47,8 +47,22 @@ class GameCenterManager: NSObject {
 
     private(set) var isAuthenticated = false
     private(set) var localPlayer: GKLocalPlayer?
+    private(set) var activeMatches: [GKTurnBasedMatch] = []
 
     var authenticationViewController: UIViewController?
+
+    /// Returns matches where it's the local player's turn
+    var pendingTurnMatches: [GKTurnBasedMatch] {
+        activeMatches.filter { match in
+            match.status == .open &&
+            match.currentParticipant?.player == GKLocalPlayer.local
+        }
+    }
+
+    /// Returns true if there are any matches requiring attention
+    var hasPendingMatches: Bool {
+        !pendingTurnMatches.isEmpty
+    }
 
     private override init() {
         super.init()
@@ -72,6 +86,8 @@ class GameCenterManager: NSObject {
                 self.isAuthenticated = true
                 self.localPlayer = GKLocalPlayer.local
                 self.registerForTurnBasedEvents()
+                // Auto-load existing matches
+                self.refreshActiveMatches()
                 completion?(true, nil)
             } else {
                 // Authentication failed
@@ -253,6 +269,28 @@ class GameCenterManager: NSObject {
             completion(matches, error)
         }
     }
+
+    /// Refreshes the active matches list and posts notification
+    func refreshActiveMatches(completion: (([GKTurnBasedMatch]?) -> Void)? = nil) {
+        guard isAuthenticated else {
+            completion?(nil)
+            return
+        }
+
+        GKTurnBasedMatch.loadMatches { [weak self] matches, error in
+            guard let self = self else { return }
+
+            if let matches = matches {
+                // Filter to only open matches
+                self.activeMatches = matches.filter { $0.status == .open }
+                // Post notification so UI can update
+                DispatchQueue.main.async {
+                    NotificationCenter.default.post(name: .gameCenterMatchesRefreshed, object: nil)
+                }
+            }
+            completion?(matches)
+        }
+    }
 }
 
 // MARK: - GKGameCenterControllerDelegate
@@ -282,11 +320,26 @@ extension GameCenterManager: GKTurnBasedMatchmakerViewControllerDelegate {
 // MARK: - GKLocalPlayerListener
 extension GameCenterManager: GKLocalPlayerListener {
     func player(_ player: GKPlayer, receivedTurnEventFor match: GKTurnBasedMatch, didBecomeActive: Bool) {
+        // Refresh active matches list
+        refreshActiveMatches()
+
         // If we have a pending matchmaker completion, this is a new match
         if let completion = matchFoundCompletion {
             matchFoundCompletion = nil
             dismissMatchmaker()
             completion(match, nil)
+            return
+        }
+
+        // If the app became active due to this notification (cold launch or background),
+        // post a notification to navigate to the match
+        if didBecomeActive {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(
+                    name: .gameCenterShouldOpenMatch,
+                    object: match
+                )
+            }
             return
         }
 
@@ -324,4 +377,6 @@ extension GameCenterManager: GKLocalPlayerListener {
 extension Notification.Name {
     static let gameCenterTurnReceived = Notification.Name("gameCenterTurnReceived")
     static let gameCenterMatchEnded = Notification.Name("gameCenterMatchEnded")
+    static let gameCenterMatchesRefreshed = Notification.Name("gameCenterMatchesRefreshed")
+    static let gameCenterShouldOpenMatch = Notification.Name("gameCenterShouldOpenMatch")
 }

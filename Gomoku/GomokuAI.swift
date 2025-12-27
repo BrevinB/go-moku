@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum AIDifficulty {
+enum AIDifficulty: String, Codable {
     case easy
     case medium
     case hard
@@ -30,6 +30,14 @@ class GomokuAI {
     }
 
     func findBestMove(board: GomokuBoard, player: Player) -> (row: Int, col: Int)? {
+        // Try opening book first for faster, stronger early game play
+        // Medium and Hard difficulties use the opening book; Easy skips it for variety
+        if difficulty != .easy {
+            if let bookMove = OpeningBook.shared.getBookMove(board: board, player: player) {
+                return bookMove
+            }
+        }
+
         // Find promising moves near existing stones
         var candidateMoves = getCandidateMoves(board: board)
 

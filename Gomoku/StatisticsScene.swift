@@ -215,6 +215,73 @@ class StatisticsScene: SKScene {
             position: CGPoint(x: size.width / 2, y: startY - spacing * 2),
             accentColor: cardAccentRed
         )
+
+        // Game History Card
+        setupGameHistoryCard(position: CGPoint(x: size.width / 2, y: startY - spacing * 3))
+    }
+
+    private func setupGameHistoryCard(position: CGPoint) {
+        let cardWidth: CGFloat = 320
+        let cardHeight: CGFloat = 60
+
+        // Card container (for touch handling)
+        let container = SKNode()
+        container.position = position
+        container.name = "historyCard"
+        container.zPosition = 5
+        addChild(container)
+
+        // Card background
+        let card = SKShapeNode(rectOf: CGSize(width: cardWidth, height: cardHeight), cornerRadius: 8)
+        card.fillColor = SKColor.white.withAlphaComponent(0.7)
+        card.strokeColor = accentColor.withAlphaComponent(0.3)
+        card.lineWidth = 1
+        card.name = "historyCard"
+        container.addChild(card)
+
+        // Accent line on left
+        let accent = SKShapeNode(rectOf: CGSize(width: 3, height: cardHeight - 16), cornerRadius: 1.5)
+        accent.fillColor = tertiaryAccent
+        accent.strokeColor = .clear
+        accent.position = CGPoint(x: -cardWidth/2 + 10, y: 0)
+        accent.name = "historyCard"
+        container.addChild(accent)
+
+        // Title
+        let titleLabel = SKLabelNode(fontNamed: uiFont)
+        titleLabel.text = isZenTheme ? "対戦履歴" : "Game History"
+        titleLabel.fontSize = 18
+        titleLabel.fontColor = primaryTextColor
+        titleLabel.horizontalAlignmentMode = .left
+        titleLabel.verticalAlignmentMode = .center
+        titleLabel.position = CGPoint(x: -cardWidth/2 + 24, y: 6)
+        titleLabel.name = "historyCard"
+        container.addChild(titleLabel)
+
+        // Subtitle with game count
+        let gameCount = GameHistoryManager.shared.gameCount
+        let subtitleLabel = SKLabelNode(fontNamed: uiFont)
+        subtitleLabel.text = isZenTheme ? "\(gameCount) games saved · \(gameCount)試合保存" : "\(gameCount) games saved"
+        subtitleLabel.fontSize = 12
+        subtitleLabel.fontColor = secondaryTextColor
+        subtitleLabel.horizontalAlignmentMode = .left
+        subtitleLabel.verticalAlignmentMode = .center
+        subtitleLabel.position = CGPoint(x: -cardWidth/2 + 24, y: -12)
+        subtitleLabel.name = "historyCard"
+        container.addChild(subtitleLabel)
+
+        // View button (if games exist)
+        if gameCount > 0 {
+            let viewLabel = SKLabelNode(fontNamed: uiFont)
+            viewLabel.text = isZenTheme ? "View ▶" : "View ▶"
+            viewLabel.fontSize = 14
+            viewLabel.fontColor = accentColor
+            viewLabel.horizontalAlignmentMode = .right
+            viewLabel.verticalAlignmentMode = .center
+            viewLabel.position = CGPoint(x: cardWidth/2 - 16, y: 0)
+            viewLabel.name = "historyCard"
+            container.addChild(viewLabel)
+        }
     }
 
     private func createStatsCard(title: String, subtitle: String?, stats: [(String, String)], position: CGPoint, accentColor cardAccent: SKColor) {
@@ -319,6 +386,11 @@ class StatisticsScene: SKScene {
                     parent.run(SKAction.scale(to: 0.96, duration: 0.1))
                 }
             }
+            if node.name == "historyCard" {
+                if let parent = node.parent, parent.name == "historyCard" {
+                    parent.run(SKAction.scale(to: 0.96, duration: 0.1))
+                }
+            }
         }
     }
 
@@ -335,10 +407,18 @@ class StatisticsScene: SKScene {
                 view?.presentScene(menuScene, transition: transition)
                 return
             }
+            if node.name == "historyCard" && GameHistoryManager.shared.hasGames {
+                SoundManager.shared.buttonTapped()
+                let transition = SKTransition.fade(withDuration: 0.4)
+                let historyScene = GameHistoryScene(size: size)
+                historyScene.scaleMode = .aspectFill
+                view?.presentScene(historyScene, transition: transition)
+                return
+            }
         }
 
         // Reset scales
-        for child in children where child.zPosition == 10 {
+        for child in children where child.zPosition == 10 || child.name == "historyCard" {
             child.run(SKAction.scale(to: 1.0, duration: 0.1))
         }
     }

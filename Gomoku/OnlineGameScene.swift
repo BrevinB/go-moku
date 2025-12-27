@@ -33,8 +33,20 @@ class OnlineGameScene: SKScene {
     private var pendingMovePosition: (row: Int, col: Int)?
     private var sendingIndicator: SKNode?
 
+    // Move confirmation UI
+    private var pendingMove: (row: Int, col: Int)?
+    private var previewStone: SKShapeNode?
+    private var confirmButton: SKShapeNode?
+    private var confirmButtonLabel: SKLabelNode?
+    private var cancelButton: SKShapeNode?
+    private var cancelButtonLabel: SKLabelNode?
+
     // Theme reference for convenience
     private var theme: BoardTheme { ThemeManager.shared.currentTheme }
+
+    // UI Colors
+    private let bamboo = SKColor(red: 0.45, green: 0.52, blue: 0.35, alpha: 1.0)
+    private let accentRed = SKColor(red: 0.75, green: 0.22, blue: 0.17, alpha: 1.0)
 
     private func makeShadow(for shape: SKShapeNode, offset: CGPoint = CGPoint(x: 4, y: -4), alpha: CGFloat = 0.25) -> SKShapeNode? {
         guard let path = shape.path else { return nil }
@@ -78,6 +90,14 @@ class OnlineGameScene: SKScene {
             self,
             selector: #selector(handleMatchEnded(_:)),
             name: .onlineGameMatchEnded,
+            object: nil
+        )
+
+        // Refresh match when app comes to foreground
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleAppWillEnterForeground),
+            name: UIApplication.willEnterForegroundNotification,
             object: nil
         )
 
@@ -958,6 +978,31 @@ class OnlineGameScene: SKScene {
         }
     }
 
+    @objc private func handleAppWillEnterForeground() {
+        // Reload match data when returning to foreground
+        guard let matchID = match?.matchID else { return }
+
+        GKTurnBasedMatch.load(withID: matchID) { [weak self] loadedMatch, error in
+            guard let self = self, let loadedMatch = loadedMatch, error == nil else { return }
+
+            DispatchQueue.main.async {
+                // Update the match reference
+                self.match = loadedMatch
+                TurnBasedMatchManager.shared.setCurrentMatch(loadedMatch)
+
+                // Refresh the board
+                self.updateBoardFromMatchData()
+
+                // Update waiting indicator
+                if TurnBasedMatchManager.shared.isMyTurn {
+                    self.hideWaitingIndicator()
+                } else {
+                    self.showWaitingIndicator()
+                }
+            }
+        }
+    }
+
     // MARK: - Touch Handling
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -981,8 +1026,21 @@ class OnlineGameScene: SKScene {
             return
         }
 
+        // Handle confirm button
+        if nodes.contains(where: { $0.name == "confirmButton" }) {
+            confirmPendingMove()
+            return
+        }
+
+        // Handle cancel button
+        if nodes.contains(where: { $0.name == "cancelButton" }) {
+            cancelPendingMove()
+            return
+        }
+
         guard case .playing = board.gameState,
-              TurnBasedMatchManager.shared.isMyTurn else { return }
+              TurnBasedMatchManager.shared.isMyTurn,
+              !isProcessingMove else { return }
 
         let boardLocation = CGPoint(
             x: location.x - boardOffset.x,
@@ -993,7 +1051,9 @@ class OnlineGameScene: SKScene {
         let row = Int((boardLocation.y / cellSize).rounded())
 
         if row >= 0 && row < board.size && col >= 0 && col < board.size {
-            placeStone(at: row, col: col)
+            if board.getPlayer(at: row, col: col) == .none {
+                showMovePreview(at: row, col: col)
+            }
         }
     }
 
@@ -1069,5 +1129,156 @@ class OnlineGameScene: SKScene {
                 ghost.position = position
             }
         }
+    }
+
+    // MARK: - Move Confirmation
+
+    private func showMovePreview(at row: Int, col: Int) {
+        // Clear any existing preview
+        clearMovePreview()
+
+        // Hide ghost stone
+        ghostStone?.removeFromParent()
+        ghostStone = nil
+
+        pendingMove = (row, col)
+
+        let stoneRadius = cellSize * 0.43
+        let position = CGPoint(
+            x: boardOffset.x + CGFloat(col) * cellSize,
+            y: boardOffset.y + CGFloat(row) * cellSize
+        )
+
+        // Create preview stone with pulsing effect
+        previewStone = SKShapeNode(circleOfRadius: stoneRadius)
+        let localColor = TurnBasedMatchManager.shared.localPlayerColor
+        let stoneColor = localColor == .black ? theme.blackStoneColor : theme.whiteStoneColor
+        let highlightColor = localColor == .black ? theme.blackStoneHighlight : theme.whiteStoneHighlight
+
+        previewStone?.fillColor = stoneColor.skColor.withAlphaComponent(0.7)
+        previewStone?.strokeColor = highlightColor.skColor
+        previewStone?.lineWidth = 3
+        previewStone?.position = position
+        previewStone?.zPosition = 6
+
+        // Add pulsing animation
+        let pulse = SKAction.sequence([
+            SKAction.scale(to: 1.05, duration: 0.5),
+            SKAction.scale(to: 1.0, duration: 0.5)
+        ])
+        previewStone?.run(SKAction.repeatForever(pulse))
+
+        // Add glow effect
+        let glow = SKShapeNode(circleOfRadius: stoneRadius + 4)
+        glow.fillColor = .clear
+        glow.strokeColor = highlightColor.skColor.withAlphaComponent(0.5)
+        glow.lineWidth = 3
+        glow.name = "previewGlow"
+        previewStone?.addChild(glow)
+
+        if let stone = previewStone {
+            addChild(stone)
+        }
+
+        SoundManager.shared.buttonTapped()
+
+        // Create confirm and cancel buttons
+        let isZenTheme = theme.id == "zen"
+        let buttonY = position.y - stoneRadius - 40
+
+        // Confirm button - green style
+        confirmButton = SKShapeNode(circleOfRadius: 26)
+        confirmButton?.fillColor = bamboo
+        confirmButton?.strokeColor = SKColor.white.withAlphaComponent(0.3)
+        confirmButton?.lineWidth = 1.5
+        confirmButton?.position = CGPoint(x: position.x + 45, y: buttonY)
+        confirmButton?.name = "confirmButton"
+        confirmButton?.zPosition = 20
+
+        confirmButtonLabel = SKLabelNode(fontNamed: isZenTheme ? "Hiragino Mincho ProN" : "AvenirNext-Bold")
+        confirmButtonLabel?.text = isZenTheme ? "決" : "✓"
+        confirmButtonLabel?.fontSize = isZenTheme ? 20 : 24
+        confirmButtonLabel?.fontColor = .white
+        confirmButtonLabel?.verticalAlignmentMode = .center
+        confirmButtonLabel?.horizontalAlignmentMode = .center
+        confirmButtonLabel?.position = .zero
+        confirmButtonLabel?.name = "confirmButton"
+
+        if let btn = confirmButton, let label = confirmButtonLabel {
+            btn.addChild(label)
+            addChild(btn)
+        }
+
+        // Cancel button - red style
+        cancelButton = SKShapeNode(circleOfRadius: 26)
+        cancelButton?.fillColor = accentRed
+        cancelButton?.strokeColor = SKColor.white.withAlphaComponent(0.3)
+        cancelButton?.lineWidth = 1.5
+        cancelButton?.position = CGPoint(x: position.x - 45, y: buttonY)
+        cancelButton?.name = "cancelButton"
+        cancelButton?.zPosition = 20
+
+        cancelButtonLabel = SKLabelNode(fontNamed: isZenTheme ? "Hiragino Mincho ProN" : "AvenirNext-Bold")
+        cancelButtonLabel?.text = isZenTheme ? "消" : "✕"
+        cancelButtonLabel?.fontSize = isZenTheme ? 20 : 24
+        cancelButtonLabel?.fontColor = .white
+        cancelButtonLabel?.verticalAlignmentMode = .center
+        cancelButtonLabel?.horizontalAlignmentMode = .center
+        cancelButtonLabel?.position = .zero
+        cancelButtonLabel?.name = "cancelButton"
+
+        if let btn = cancelButton, let label = cancelButtonLabel {
+            btn.addChild(label)
+            addChild(btn)
+        }
+
+        // Animate buttons appearing
+        confirmButton?.setScale(0)
+        cancelButton?.setScale(0)
+        let popIn = SKAction.sequence([
+            SKAction.scale(to: 1.1, duration: 0.15),
+            SKAction.scale(to: 1.0, duration: 0.1)
+        ])
+        confirmButton?.run(popIn)
+        cancelButton?.run(popIn)
+    }
+
+    private func confirmPendingMove() {
+        guard let move = pendingMove else { return }
+
+        SoundManager.shared.buttonTapped()
+
+        // Animate confirmation
+        let scaleDown = SKAction.scale(to: 0.8, duration: 0.1)
+        confirmButton?.run(scaleDown)
+
+        // Clear the preview UI
+        clearMovePreview()
+
+        // Actually place the stone and send to server
+        placeStone(at: move.row, col: move.col)
+
+        pendingMove = nil
+    }
+
+    private func cancelPendingMove() {
+        SoundManager.shared.buttonTapped()
+        clearMovePreview()
+        pendingMove = nil
+    }
+
+    private func clearMovePreview() {
+        let fadeOut = SKAction.fadeOut(withDuration: 0.15)
+        let remove = SKAction.removeFromParent()
+
+        previewStone?.run(SKAction.sequence([fadeOut, remove]))
+        confirmButton?.run(SKAction.sequence([fadeOut, remove]))
+        cancelButton?.run(SKAction.sequence([fadeOut, remove]))
+
+        previewStone = nil
+        confirmButton = nil
+        confirmButtonLabel = nil
+        cancelButton = nil
+        cancelButtonLabel = nil
     }
 }

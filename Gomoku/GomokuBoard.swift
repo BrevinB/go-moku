@@ -7,7 +7,7 @@
 
 import Foundation
 
-enum Player {
+enum Player: String, Codable {
     case black
     case white
     case none
@@ -21,13 +21,45 @@ enum Player {
     }
 }
 
-enum GameState {
+enum GameState: Codable {
     case playing
     case won(Player)
     case draw
+
+    // Custom Codable for associated value
+    private enum CodingKeys: String, CodingKey {
+        case type
+        case winner
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let type = try container.decode(String.self, forKey: .type)
+        switch type {
+        case "playing": self = .playing
+        case "won":
+            let winner = try container.decode(Player.self, forKey: .winner)
+            self = .won(winner)
+        case "draw": self = .draw
+        default: self = .playing
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        switch self {
+        case .playing:
+            try container.encode("playing", forKey: .type)
+        case .won(let player):
+            try container.encode("won", forKey: .type)
+            try container.encode(player, forKey: .winner)
+        case .draw:
+            try container.encode("draw", forKey: .type)
+        }
+    }
 }
 
-struct Move {
+struct Move: Codable {
     let row: Int
     let col: Int
     let player: Player
