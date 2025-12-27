@@ -1,0 +1,119 @@
+{
+  "" : {
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/Gomoku-primary.dia",
+    "emit-module-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/Gomoku-primary-emit-module.d",
+    "emit-module-diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/Gomoku-primary-emit-module.dia",
+    "pch" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/Gomoku-primary-Bridging-header.pch",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/Gomoku-primary.swiftdeps"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/AppDelegate.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/AppDelegate.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/AppDelegate.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/AppDelegate.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/AppDelegate.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/AppDelegate.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/AppDelegate.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/AppDelegate.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/AppDelegate~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/GameScene.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameScene.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameScene.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameScene.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameScene.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameScene.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameScene.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameScene.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameScene~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/GameViewController.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameViewController.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameViewController.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameViewController.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameViewController.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameViewController.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameViewController.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameViewController.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GameViewController~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/GomokuAI.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuAI.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuAI.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuAI.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuAI.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuAI.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuAI.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuAI.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuAI~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/GomokuBoard.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuBoard.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuBoard.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuBoard.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuBoard.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuBoard.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuBoard.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuBoard.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GomokuBoard~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/MenuScene.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/MenuScene.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/MenuScene.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/MenuScene.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/MenuScene.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/MenuScene.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/MenuScene.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/MenuScene.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/MenuScene~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/SettingsScene.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SettingsScene.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SettingsScene.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SettingsScene.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SettingsScene.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SettingsScene.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SettingsScene.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SettingsScene.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SettingsScene~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/SoundManager.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SoundManager.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SoundManager.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SoundManager.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SoundManager.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SoundManager.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SoundManager.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SoundManager.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/SoundManager~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/StatisticsManager.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsManager.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsManager.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsManager.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsManager.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsManager.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsManager.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsManager.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsManager~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/Gomoku/StatisticsScene.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsScene.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsScene.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsScene.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsScene.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsScene.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsScene.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsScene.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/StatisticsScene~partial.swiftmodule"
+  },
+  "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/brevin/Developer/Gomoku/build/Build/Intermediates.noindex/Gomoku.build/Debug-iphonesimulator/Gomoku.build/Objects-normal/x86_64/GeneratedAssetSymbols~partial.swiftmodule"
+  }
+}

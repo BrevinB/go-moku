@@ -1,0 +1,139 @@
+{
+  "meta" : {
+    "version" : "2024-11-15"
+  },
+  "resources" : {
+    "leaderboards" : [
+      {
+        "id" : "com.gomoku.leaderboard.bestWinStreak",
+        "name" : "Best Win Streak",
+        "sortAscending" : false,
+        "scoreFormat" : "INTEGER",
+        "scoreSuffix" : " wins",
+        "scoreSuffixSingular" : " win"
+      },
+      {
+        "id" : "com.gomoku.leaderboard.totalWins",
+        "name" : "Total Wins",
+        "sortAscending" : false,
+        "scoreFormat" : "INTEGER",
+        "scoreSuffix" : " wins",
+        "scoreSuffixSingular" : " win"
+      },
+      {
+        "id" : "com.gomoku.leaderboard.fastestWin",
+        "name" : "Fastest Win",
+        "sortAscending" : true,
+        "scoreFormat" : "INTEGER",
+        "scoreSuffix" : " moves",
+        "scoreSuffixSingular" : " move"
+      }
+    ],
+    "achievements" : [
+      {
+        "id" : "com.gomoku.achievement.firstWin",
+        "name" : "First Victory",
+        "description" : "Win your first game of Gomoku",
+        "points" : 10,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.firstAIWin",
+        "name" : "Machine Beater",
+        "description" : "Win your first game against the AI",
+        "points" : 10,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.firstOnlineWin",
+        "name" : "Online Champion",
+        "description" : "Win your first online multiplayer game",
+        "points" : 15,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.beatEasyAI",
+        "name" : "Easy Peasy",
+        "description" : "Defeat the Easy AI opponent",
+        "points" : 5,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.beatMediumAI",
+        "name" : "Rising Star",
+        "description" : "Defeat the Medium AI opponent",
+        "points" : 15,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.beatHardAI",
+        "name" : "Grandmaster",
+        "description" : "Defeat the Hard AI opponent",
+        "points" : 25,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.winStreak5",
+        "name" : "On a Roll",
+        "description" : "Achieve a 5-game win streak",
+        "points" : 15,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.winStreak10",
+        "name" : "Unstoppable",
+        "description" : "Achieve a 10-game win streak",
+        "points" : 25,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.winStreak25",
+        "name" : "Legendary",
+        "description" : "Achieve a 25-game win streak",
+        "points" : 50,
+        "hidden" : true,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.played10Games",
+        "name" : "Getting Started",
+        "description" : "Play 10 games of Gomoku",
+        "points" : 10,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.played50Games",
+        "name" : "Dedicated Player",
+        "description" : "Play 50 games of Gomoku",
+        "points" : 20,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.played100Games",
+        "name" : "Gomoku Master",
+        "description" : "Play 100 games of Gomoku",
+        "points" : 35,
+        "hidden" : false,
+        "reusable" : false
+      },
+      {
+        "id" : "com.gomoku.achievement.quickWin",
+        "name" : "Speed Demon",
+        "description" : "Win a game in 9 moves or less",
+        "points" : 30,
+        "hidden" : true,
+        "reusable" : false
+      }
+    ]
+  }
+}

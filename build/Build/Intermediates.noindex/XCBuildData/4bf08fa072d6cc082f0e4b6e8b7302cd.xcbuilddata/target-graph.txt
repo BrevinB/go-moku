@@ -1,0 +1,2 @@
+Target dependency graph (1 target)
+Target 'Gomoku' in project 'Gomoku' (no dependencies)
