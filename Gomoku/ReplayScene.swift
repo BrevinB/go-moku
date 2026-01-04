@@ -468,6 +468,9 @@ class ReplayScene: SKScene {
 
         stonesNode.addChild(stone)
 
+        // Add colorblind marker if enabled
+        AccessibilityManager.shared.addColorblindMarker(to: stone, player: player, radius: stoneRadius)
+
         // Last move indicator
         if isLastMove {
             let indicator = SKShapeNode(circleOfRadius: stoneRadius * 0.25)

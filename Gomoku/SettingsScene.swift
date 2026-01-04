@@ -25,11 +25,18 @@ class SettingsScene: SKScene {
     private let toggleOffColor = SKColor(red: 0.40, green: 0.38, blue: 0.35, alpha: 0.4)
     private let dangerColor = SKColor(red: 0.75, green: 0.22, blue: 0.17, alpha: 1.0)
 
+    // Scrolling
+    private var scrollNode: SKNode!
+    private var scrollOffset: CGFloat = 0
+    private var maxScrollOffset: CGFloat = 0
+    private var lastTouchY: CGFloat = 0
+    private var isDragging = false
+
     override func didMove(to view: SKView) {
         setupBackground()
         setupDecorations()
         setupHeader()
-        setupSettings()
+        setupScrollableContent()
         setupBackButton()
     }
 
@@ -142,7 +149,7 @@ class SettingsScene: SKScene {
         titleLabel.fontSize = 36
         titleLabel.fontColor = primaryTextColor
         titleLabel.position = CGPoint(x: size.width / 2, y: size.height - 100)
-        titleLabel.zPosition = 10
+        titleLabel.zPosition = 20
         addChild(titleLabel)
 
         // Subtitle (only for Zen theme)
@@ -152,7 +159,7 @@ class SettingsScene: SKScene {
             subtitle.fontSize = 16
             subtitle.fontColor = secondaryTextColor
             subtitle.position = CGPoint(x: size.width / 2, y: size.height - 130)
-            subtitle.zPosition = 10
+            subtitle.zPosition = 20
             addChild(subtitle)
         }
 
@@ -161,34 +168,125 @@ class SettingsScene: SKScene {
         line.fillColor = accentColor.withAlphaComponent(0.5)
         line.strokeColor = .clear
         line.position = CGPoint(x: size.width / 2, y: size.height - (isZenTheme ? 155 : 135))
-        line.zPosition = 10
+        line.zPosition = 20
         addChild(line)
     }
 
-    private func setupSettings() {
-        let centerY = size.height / 2 + 80
+    private func setupScrollableContent() {
+        // Create scroll container
+        scrollNode = SKNode()
+        scrollNode.position = CGPoint(x: 0, y: 0)
+        scrollNode.zPosition = 5
+
+        // Create mask for scroll area
+        let headerHeight: CGFloat = isZenTheme ? 170 : 150
+        let footerHeight: CGFloat = 130
+        let maskHeight = size.height - headerHeight - footerHeight
+
+        let maskNode = SKCropNode()
+        let maskShape = SKShapeNode(rect: CGRect(x: 0, y: footerHeight, width: size.width, height: maskHeight))
+        maskShape.fillColor = .white
+        maskNode.maskNode = maskShape
+        maskNode.addChild(scrollNode)
+        maskNode.zPosition = 5
+        addChild(maskNode)
+
+        // Add settings content
+        var currentY = size.height - headerHeight - 50
+        let rowSpacing: CGFloat = 90
 
         // Sound settings
         createSettingRow(
             title: isZenTheme ? "音効" : "Sound Effects",
             subtitle: isZenTheme ? "Sound Effects" : nil,
-            yPosition: centerY,
+            yPosition: currentY,
             isEnabled: SoundManager.shared.isSoundEnabled(),
             toggleName: "soundToggle"
         )
+        currentY -= rowSpacing
 
         // Haptics settings
         createSettingRow(
             title: isZenTheme ? "振動" : "Haptic Feedback",
             subtitle: isZenTheme ? "Haptic Feedback" : nil,
-            yPosition: centerY - 110,
+            yPosition: currentY,
             isEnabled: SoundManager.shared.isHapticsEnabled(),
             toggleName: "hapticsToggle"
         )
+        currentY -= 70
+
+        // Accessibility section header
+        let accessibilityLabel = SKLabelNode(fontNamed: uiFont)
+        accessibilityLabel.text = isZenTheme ? "アクセシビリティ" : "Accessibility"
+        accessibilityLabel.fontSize = 14
+        accessibilityLabel.fontColor = secondaryTextColor
+        accessibilityLabel.position = CGPoint(x: size.width / 2, y: currentY)
+        scrollNode.addChild(accessibilityLabel)
+
+        if isZenTheme {
+            let accessibilitySubtitle = SKLabelNode(fontNamed: uiFont)
+            accessibilitySubtitle.text = "Accessibility"
+            accessibilitySubtitle.fontSize = 10
+            accessibilitySubtitle.fontColor = secondaryTextColor.withAlphaComponent(0.7)
+            accessibilitySubtitle.position = CGPoint(x: size.width / 2, y: currentY - 15)
+            scrollNode.addChild(accessibilitySubtitle)
+        }
+        currentY -= 60
+
+        // Colorblind mode settings
+        createSettingRow(
+            title: isZenTheme ? "色覚サポート" : "Colorblind Mode",
+            subtitle: isZenTheme ? "Colorblind Mode · Adds X/O markers" : "Adds X/O markers to stones",
+            yPosition: currentY,
+            isEnabled: AccessibilityManager.shared.isColorblindModeEnabled,
+            toggleName: "colorblindToggle"
+        )
+        currentY -= rowSpacing
+
+        // Reduce Motion
+        createSettingRow(
+            title: isZenTheme ? "視覚効果を減らす" : "Reduce Motion",
+            subtitle: isZenTheme ? "Reduce Motion" : "Minimize animations",
+            yPosition: currentY,
+            isEnabled: AccessibilityManager.shared.isReduceMotionEnabled,
+            toggleName: "reduceMotionToggle"
+        )
+        currentY -= rowSpacing
+
+        // Board Coordinates
+        createSettingRow(
+            title: isZenTheme ? "座標表示" : "Board Coordinates",
+            subtitle: isZenTheme ? "Board Coordinates · A-O, 1-15" : "Show A-O and 1-15 labels",
+            yPosition: currentY,
+            isEnabled: AccessibilityManager.shared.showBoardCoordinates,
+            toggleName: "coordinatesToggle"
+        )
+        currentY -= rowSpacing
+
+        // High Contrast Mode
+        createSettingRow(
+            title: isZenTheme ? "高コントラスト" : "High Contrast",
+            subtitle: isZenTheme ? "High Contrast" : "Bolder lines and borders",
+            yPosition: currentY,
+            isEnabled: AccessibilityManager.shared.isHighContrastEnabled,
+            toggleName: "highContrastToggle"
+        )
+        currentY -= rowSpacing
 
         #if DEBUG
-        setupDebugSection(yPosition: centerY - 260)
+        currentY -= 20
+        setupDebugSection(yPosition: currentY)
+        currentY -= 150
         #endif
+
+        // Calculate max scroll offset
+        // currentY now points below the last content item
+        // We need to scroll enough to bring the lowest content into view
+        let visibleBottomY = footerHeight  // Bottom of visible mask area (130)
+        let lowestContentY = currentY      // Below the last content
+
+        // maxScrollOffset should bring lowestContentY up to visibleBottomY with padding
+        maxScrollOffset = max(0, visibleBottomY - lowestContentY + 60)
     }
 
     #if DEBUG
@@ -198,22 +296,20 @@ class SettingsScene: SKScene {
         debugLabel.text = isZenTheme ? "開発者設定 · Debug" : "Debug Settings"
         debugLabel.fontSize = 16
         debugLabel.fontColor = dangerColor
-        debugLabel.position = CGPoint(x: size.width / 2, y: yPosition + 60)
-        debugLabel.zPosition = 10
-        addChild(debugLabel)
+        debugLabel.position = CGPoint(x: size.width / 2, y: yPosition)
+        scrollNode.addChild(debugLabel)
 
         // Coin balance display
         let balanceLabel = SKLabelNode(fontNamed: uiFont)
         balanceLabel.text = isZenTheme ? "所持コイン: \(CoinManager.shared.balance)" : "Balance: \(CoinManager.shared.balance) coins"
         balanceLabel.fontSize = 14
         balanceLabel.fontColor = secondaryTextColor
-        balanceLabel.position = CGPoint(x: size.width / 2, y: yPosition + 30)
+        balanceLabel.position = CGPoint(x: size.width / 2, y: yPosition - 30)
         balanceLabel.name = "debugBalanceLabel"
-        balanceLabel.zPosition = 10
-        addChild(balanceLabel)
+        scrollNode.addChild(balanceLabel)
 
         // Button row
-        let buttonY = yPosition - 10
+        let buttonY = yPosition - 70
         let buttonSpacing: CGFloat = 90
 
         // +100 coins button
@@ -257,8 +353,7 @@ class SettingsScene: SKScene {
         button.lineWidth = 1
         button.position = position
         button.name = name
-        button.zPosition = 10
-        addChild(button)
+        scrollNode.addChild(button)
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = title
@@ -271,8 +366,10 @@ class SettingsScene: SKScene {
     }
 
     private func updateDebugBalanceLabel() {
-        if let label = childNode(withName: "debugBalanceLabel") as? SKLabelNode {
-            label.text = isZenTheme ? "所持コイン: \(CoinManager.shared.balance)" : "Balance: \(CoinManager.shared.balance) coins"
+        scrollNode.enumerateChildNodes(withName: "debugBalanceLabel") { node, _ in
+            if let label = node as? SKLabelNode {
+                label.text = self.isZenTheme ? "所持コイン: \(CoinManager.shared.balance)" : "Balance: \(CoinManager.shared.balance) coins"
+            }
         }
     }
     #endif
@@ -287,16 +384,15 @@ class SettingsScene: SKScene {
         card.strokeColor = accentColor.withAlphaComponent(0.3)
         card.lineWidth = 1
         card.position = CGPoint(x: size.width / 2, y: yPosition)
-        card.zPosition = 5
-        addChild(card)
+        card.name = toggleName
+        scrollNode.addChild(card)
 
         // Accent line on left
         let accent = SKShapeNode(rectOf: CGSize(width: 3, height: cardHeight - 16), cornerRadius: 1.5)
         accent.fillColor = toggleOnColor
         accent.strokeColor = .clear
-        accent.position = CGPoint(x: size.width / 2 - cardWidth/2 + 10, y: yPosition)
-        accent.zPosition = 6
-        addChild(accent)
+        accent.position = CGPoint(x: -cardWidth/2 + 10, y: 0)
+        card.addChild(accent)
 
         // Title
         let titleLabel = SKLabelNode(fontNamed: uiFont)
@@ -304,9 +400,9 @@ class SettingsScene: SKScene {
         titleLabel.fontSize = 18
         titleLabel.fontColor = primaryTextColor
         titleLabel.horizontalAlignmentMode = .left
-        titleLabel.position = CGPoint(x: size.width / 2 - cardWidth/2 + 24, y: yPosition + (subtitle != nil ? 8 : 0))
-        titleLabel.zPosition = 6
-        addChild(titleLabel)
+        titleLabel.position = CGPoint(x: -cardWidth/2 + 24, y: subtitle != nil ? 8 : 0)
+        titleLabel.verticalAlignmentMode = .center
+        card.addChild(titleLabel)
 
         // Subtitle (if provided)
         if let subtitle = subtitle {
@@ -315,9 +411,9 @@ class SettingsScene: SKScene {
             subtitleLabel.fontSize = 11
             subtitleLabel.fontColor = secondaryTextColor
             subtitleLabel.horizontalAlignmentMode = .left
-            subtitleLabel.position = CGPoint(x: size.width / 2 - cardWidth/2 + 24, y: yPosition - 12)
-            subtitleLabel.zPosition = 6
-            addChild(subtitleLabel)
+            subtitleLabel.position = CGPoint(x: -cardWidth/2 + 24, y: -12)
+            subtitleLabel.verticalAlignmentMode = .center
+            card.addChild(subtitleLabel)
         }
 
         // Toggle background
@@ -325,10 +421,9 @@ class SettingsScene: SKScene {
         toggleBg.fillColor = isEnabled ? toggleOnColor : toggleOffColor
         toggleBg.strokeColor = isEnabled ? SKColor(red: 0.35, green: 0.42, blue: 0.25, alpha: 1.0) : secondaryTextColor.withAlphaComponent(0.2)
         toggleBg.lineWidth = 1
-        toggleBg.position = CGPoint(x: size.width / 2 + cardWidth/2 - 45, y: yPosition)
+        toggleBg.position = CGPoint(x: cardWidth/2 - 45, y: 0)
         toggleBg.name = toggleName
-        toggleBg.zPosition = 6
-        addChild(toggleBg)
+        card.addChild(toggleBg)
 
         // Toggle knob
         let knob = SKShapeNode(circleOfRadius: 12)
@@ -346,7 +441,7 @@ class SettingsScene: SKScene {
         let container = SKNode()
         container.position = CGPoint(x: size.width / 2, y: 70)
         container.name = "backButton"
-        container.zPosition = 10
+        container.zPosition = 20
         addChild(container)
 
         let bg = SKShapeNode(rectOf: CGSize(width: 200, height: 50), cornerRadius: 8)
@@ -365,22 +460,57 @@ class SettingsScene: SKScene {
         container.addChild(label)
     }
 
+    // MARK: - Touch Handling
+
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
-        let nodes = self.nodes(at: touch.location(in: self))
+        let location = touch.location(in: self)
+        lastTouchY = location.y
+        isDragging = false
 
+        let nodes = self.nodes(at: location)
         for node in nodes {
             if node.name == "backButton" {
-                if let parent = node.parent, parent.zPosition == 10 {
+                if let parent = node.parent, parent.zPosition == 20 {
                     parent.run(SKAction.scale(to: 0.96, duration: 0.1))
                 }
             }
         }
     }
 
+    override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
+        guard let touch = touches.first else { return }
+        let location = touch.location(in: self)
+        let deltaY = location.y - lastTouchY
+
+        if abs(deltaY) > 5 {
+            isDragging = true
+        }
+
+        if isDragging {
+            // Drag up (positive deltaY) → scrollOffset increases → content moves up → see bottom content
+            scrollOffset += deltaY
+            scrollOffset = max(0, min(scrollOffset, maxScrollOffset))
+            scrollNode.position.y = scrollOffset
+            lastTouchY = location.y
+        }
+    }
+
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
+
+        // Reset back button scale
+        for child in children where child.name == "backButton" && child.zPosition == 20 {
+            child.run(SKAction.scale(to: 1.0, duration: 0.1))
+        }
+
+        if !isDragging {
+            handleTap(at: location)
+        }
+    }
+
+    private func handleTap(at location: CGPoint) {
         let nodes = self.nodes(at: location)
 
         for node in nodes {
@@ -393,21 +523,65 @@ class SettingsScene: SKScene {
             }
 
             if nodeName == "soundToggle" {
-                let currentState = SoundManager.shared.isSoundEnabled()
-                SoundManager.shared.setSoundEnabled(!currentState)
-                animateToggle(node, enabled: !currentState)
-                if !currentState {
-                    SoundManager.shared.playButton()
+                if let toggle = findToggle(named: nodeName) {
+                    let currentState = SoundManager.shared.isSoundEnabled()
+                    SoundManager.shared.setSoundEnabled(!currentState)
+                    animateToggle(toggle, enabled: !currentState)
+                    if !currentState {
+                        SoundManager.shared.playButton()
+                    }
                 }
                 return
             }
 
             if nodeName == "hapticsToggle" {
-                let currentState = SoundManager.shared.isHapticsEnabled()
-                SoundManager.shared.setHapticsEnabled(!currentState)
-                animateToggle(node, enabled: !currentState)
-                if !currentState {
-                    SoundManager.shared.hapticMedium()
+                if let toggle = findToggle(named: nodeName) {
+                    let currentState = SoundManager.shared.isHapticsEnabled()
+                    SoundManager.shared.setHapticsEnabled(!currentState)
+                    animateToggle(toggle, enabled: !currentState)
+                    if !currentState {
+                        SoundManager.shared.hapticMedium()
+                    }
+                }
+                return
+            }
+
+            if nodeName == "colorblindToggle" {
+                if let toggle = findToggle(named: nodeName) {
+                    let currentState = AccessibilityManager.shared.isColorblindModeEnabled
+                    AccessibilityManager.shared.setColorblindMode(!currentState)
+                    animateToggle(toggle, enabled: !currentState)
+                    SoundManager.shared.buttonTapped()
+                }
+                return
+            }
+
+            if nodeName == "reduceMotionToggle" {
+                if let toggle = findToggle(named: nodeName) {
+                    let currentState = AccessibilityManager.shared.isReduceMotionEnabled
+                    AccessibilityManager.shared.setReduceMotion(!currentState)
+                    animateToggle(toggle, enabled: !currentState)
+                    SoundManager.shared.buttonTapped()
+                }
+                return
+            }
+
+            if nodeName == "coordinatesToggle" {
+                if let toggle = findToggle(named: nodeName) {
+                    let currentState = AccessibilityManager.shared.showBoardCoordinates
+                    AccessibilityManager.shared.setShowCoordinates(!currentState)
+                    animateToggle(toggle, enabled: !currentState)
+                    SoundManager.shared.buttonTapped()
+                }
+                return
+            }
+
+            if nodeName == "highContrastToggle" {
+                if let toggle = findToggle(named: nodeName) {
+                    let currentState = AccessibilityManager.shared.isHighContrastEnabled
+                    AccessibilityManager.shared.setHighContrast(!currentState)
+                    animateToggle(toggle, enabled: !currentState)
+                    SoundManager.shared.buttonTapped()
                 }
                 return
             }
@@ -445,16 +619,26 @@ class SettingsScene: SKScene {
             }
             #endif
         }
-
-        // Reset scales
-        for child in children where child.zPosition == 10 {
-            child.run(SKAction.scale(to: 1.0, duration: 0.1))
-        }
     }
 
-    private func animateToggle(_ node: SKNode, enabled: Bool) {
-        guard let toggle = node as? SKShapeNode else { return }
-        guard let knob = toggle.childNode(withName: "\(node.name ?? "")_knob") else { return }
+    private func findToggle(named name: String) -> SKShapeNode? {
+        var foundToggle: SKShapeNode?
+        scrollNode.enumerateChildNodes(withName: name) { node, stop in
+            if let card = node as? SKShapeNode {
+                card.enumerateChildNodes(withName: name) { toggleNode, innerStop in
+                    if let toggle = toggleNode as? SKShapeNode {
+                        foundToggle = toggle
+                        innerStop.pointee = true
+                    }
+                }
+            }
+            stop.pointee = true
+        }
+        return foundToggle
+    }
+
+    private func animateToggle(_ toggle: SKShapeNode, enabled: Bool) {
+        guard let knob = toggle.childNode(withName: "\(toggle.name ?? "")_knob") else { return }
 
         // Animate background color
         let colorAction = SKAction.customAction(withDuration: 0.25) { [weak self] node, elapsedTime in

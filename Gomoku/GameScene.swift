@@ -470,13 +470,23 @@ class GameScene: SKScene {
         // Draw grid lines - sumi ink style
         gridNode = SKNode()
         let totalGridSize = cellSize * CGFloat(board.size - 1)
+        let highContrast = AccessibilityManager.shared.isHighContrastEnabled
 
         for i in 0..<board.size {
             let position = CGFloat(i) * cellSize
 
             // Edge lines slightly thicker (traditional Go board style)
+            // High contrast mode makes all lines bolder
             let isEdge = (i == 0 || i == board.size - 1)
-            let lineWidth: CGFloat = isEdge ? 1.5 : 1.0
+            var lineWidth: CGFloat = isEdge ? 1.5 : 1.0
+            if highContrast {
+                lineWidth = isEdge ? 2.5 : 1.8
+            }
+
+            // Grid line color (darker for high contrast)
+            let gridColor = highContrast
+                ? theme.gridLineColor.skColor.withAlphaComponent(1.0)
+                : theme.gridLineColor.skColor
 
             // Vertical lines
             let verticalLine = SKShapeNode()
@@ -484,7 +494,7 @@ class GameScene: SKScene {
             verticalPath.move(to: CGPoint(x: position, y: 0))
             verticalPath.addLine(to: CGPoint(x: position, y: totalGridSize))
             verticalLine.path = verticalPath
-            verticalLine.strokeColor = theme.gridLineColor.skColor
+            verticalLine.strokeColor = gridColor
             verticalLine.lineWidth = lineWidth
             gridNode.addChild(verticalLine)
 
@@ -494,7 +504,7 @@ class GameScene: SKScene {
             horizontalPath.move(to: CGPoint(x: 0, y: position))
             horizontalPath.addLine(to: CGPoint(x: totalGridSize, y: position))
             horizontalLine.path = horizontalPath
-            horizontalLine.strokeColor = theme.gridLineColor.skColor
+            horizontalLine.strokeColor = gridColor
             horizontalLine.lineWidth = lineWidth
             gridNode.addChild(horizontalLine)
         }
@@ -516,6 +526,56 @@ class GameScene: SKScene {
             star.zPosition = 1
             star.name = "starPoint"
             addChild(star)
+        }
+
+        // Add board coordinates if enabled
+        if AccessibilityManager.shared.showBoardCoordinates {
+            setupBoardCoordinates()
+        }
+    }
+
+    private func setupBoardCoordinates() {
+        let letters = "ABCDEFGHJKLMNOP" // Skip 'I' as per Go convention
+        let fontSize: CGFloat = 10
+        let coordinateColor = theme.gridLineColor.skColor.withAlphaComponent(0.7)
+        let fontName = theme.id == "zen" ? "Hiragino Mincho ProN" : "AvenirNext-Medium"
+
+        // Column labels (A-O) at bottom
+        for col in 0..<board.size {
+            let letter = String(letters[letters.index(letters.startIndex, offsetBy: col)])
+
+            let label = SKLabelNode(fontNamed: fontName)
+            label.text = letter
+            label.fontSize = fontSize
+            label.fontColor = coordinateColor
+            label.horizontalAlignmentMode = .center
+            label.verticalAlignmentMode = .top
+            label.position = CGPoint(
+                x: boardOffset.x + CGFloat(col) * cellSize,
+                y: boardOffset.y - 8
+            )
+            label.zPosition = 2
+            label.name = "coordinate"
+            addChild(label)
+        }
+
+        // Row labels (1-15) on left side
+        for row in 0..<board.size {
+            let number = row + 1
+
+            let label = SKLabelNode(fontNamed: fontName)
+            label.text = "\(number)"
+            label.fontSize = fontSize
+            label.fontColor = coordinateColor
+            label.horizontalAlignmentMode = .right
+            label.verticalAlignmentMode = .center
+            label.position = CGPoint(
+                x: boardOffset.x - 8,
+                y: boardOffset.y + CGFloat(row) * cellSize
+            )
+            label.zPosition = 2
+            label.name = "coordinate"
+            addChild(label)
         }
     }
 
@@ -792,14 +852,22 @@ class GameScene: SKScene {
             SoundManager.shared.stonePlaced()
             let stoneRadius = cellSize * 0.43
             let stone = SKShapeNode(circleOfRadius: stoneRadius)
+            let highContrast = AccessibilityManager.shared.isHighContrastEnabled
 
             // Stone colors from theme
             let stoneColor = player == .black ? theme.blackStoneColor : theme.whiteStoneColor
             let highlightColor = player == .black ? theme.blackStoneHighlight : theme.whiteStoneHighlight
 
             stone.fillColor = stoneColor.skColor
-            stone.strokeColor = highlightColor.skColor.withAlphaComponent(0.8)
-            stone.lineWidth = player == .black ? 2 : 2.5
+
+            // High contrast mode: stronger borders
+            if highContrast {
+                stone.strokeColor = player == .black ? SKColor.white : SKColor.black
+                stone.lineWidth = 3.0
+            } else {
+                stone.strokeColor = highlightColor.skColor.withAlphaComponent(0.8)
+                stone.lineWidth = player == .black ? 2 : 2.5
+            }
 
             stone.position = CGPoint(
                 x: boardOffset.x + CGFloat(col) * cellSize,
@@ -857,42 +925,55 @@ class GameScene: SKScene {
                 stone.strokeColor = .clear
             }
 
-            // Enhanced entrance animation with squash & stretch
-            let originalY = stone.position.y
-            stone.position.y += 60
-            stone.alpha = 0
-            stone.setScale(0.3)
+            // Entrance animation (reduced if accessibility setting is on)
+            if AccessibilityManager.shared.shouldSkipAnimations {
+                // Minimal animation for reduce motion
+                stone.alpha = 0
+                let fadeIn = SKAction.fadeIn(withDuration: 0.1)
+                stone.run(fadeIn)
+            } else {
+                // Full animation with squash & stretch
+                let originalY = stone.position.y
+                stone.position.y += 60
+                stone.alpha = 0
+                stone.setScale(0.3)
 
-            let moveAction = SKAction.moveTo(y: originalY, duration: 0.35)
-            moveAction.timingMode = .easeOut
+                let moveAction = SKAction.moveTo(y: originalY, duration: 0.35)
+                moveAction.timingMode = .easeOut
 
-            let fadeAction = SKAction.fadeAlpha(to: 1.0, duration: 0.25)
+                let fadeAction = SKAction.fadeAlpha(to: 1.0, duration: 0.25)
 
-            // Squash & stretch for juicy impact
-            let scaleUp = SKAction.scale(to: 1.15, duration: 0.2)
-            scaleUp.timingMode = .easeOut
-            let squash = SKAction.scaleY(to: 0.85, duration: 0.08)
-            squash.timingMode = .easeIn
-            let stretch = SKAction.group([
-                SKAction.scaleY(to: 1.1, duration: 0.08),
-                SKAction.scaleX(to: 0.95, duration: 0.08)
-            ])
-            stretch.timingMode = .easeOut
-            let settle = SKAction.scale(to: 1.0, duration: 0.12)
-            settle.timingMode = .easeInEaseOut
-            let scaleSequence = SKAction.sequence([scaleUp, squash, stretch, settle])
+                // Squash & stretch for juicy impact
+                let scaleUp = SKAction.scale(to: 1.15, duration: 0.2)
+                scaleUp.timingMode = .easeOut
+                let squash = SKAction.scaleY(to: 0.85, duration: 0.08)
+                squash.timingMode = .easeIn
+                let stretch = SKAction.group([
+                    SKAction.scaleY(to: 1.1, duration: 0.08),
+                    SKAction.scaleX(to: 0.95, duration: 0.08)
+                ])
+                stretch.timingMode = .easeOut
+                let settle = SKAction.scale(to: 1.0, duration: 0.12)
+                settle.timingMode = .easeInEaseOut
+                let scaleSequence = SKAction.sequence([scaleUp, squash, stretch, settle])
 
-            let group = SKAction.group([moveAction, fadeAction, scaleSequence])
-            stone.run(group)
+                let group = SKAction.group([moveAction, fadeAction, scaleSequence])
+                stone.run(group)
 
-            // Add subtle rotation for visual interest
-            let rotation = SKAction.rotate(byAngle: CGFloat.random(in: -0.1...0.1), duration: 0.35)
-            stone.run(rotation)
+                // Add subtle rotation for visual interest
+                let rotation = SKAction.rotate(byAngle: CGFloat.random(in: -0.1...0.1), duration: 0.35)
+                stone.run(rotation)
+            }
 
             stonesNode.addChild(stone)
 
-            // Add particle effect
-            addPlacementParticles(at: stone.position, color: player == .black ? .black : .white)
+            // Add colorblind marker if enabled
+            AccessibilityManager.shared.addColorblindMarker(to: stone, player: player, radius: stoneRadius)
+
+            // Add particle effect (skip if reduce motion is enabled)
+            if !AccessibilityManager.shared.shouldSkipAnimations {
+                addPlacementParticles(at: stone.position, color: player == .black ? .black : .white)
+            }
 
             updateStatusLabel()
             animateStatusUpdate()
@@ -1091,21 +1172,24 @@ class GameScene: SKScene {
         // Check for special achievements
         let isQuickWin = moveCount <= 15 // Win in 15 moves or less
         let isPerfectWin = moveCount <= 10 // Win in 10 moves or less
+        let reduceMotion = AccessibilityManager.shared.shouldSkipAnimations
 
-        // Screen shake effect! (more intense for quick wins)
-        let shakeAmount: CGFloat = isPerfectWin ? 12 : (isQuickWin ? 10 : 8)
-        let shakeDuration = 0.05
-        let shakeActions = [
-            SKAction.moveBy(x: shakeAmount, y: shakeAmount, duration: shakeDuration),
-            SKAction.moveBy(x: -shakeAmount * 2, y: -shakeAmount, duration: shakeDuration),
-            SKAction.moveBy(x: shakeAmount * 2, y: -shakeAmount, duration: shakeDuration),
-            SKAction.moveBy(x: -shakeAmount * 2, y: shakeAmount * 2, duration: shakeDuration),
-            SKAction.moveBy(x: shakeAmount * 2, y: -shakeAmount, duration: shakeDuration),
-            SKAction.moveBy(x: -shakeAmount, y: -shakeAmount, duration: shakeDuration)
-        ]
-        let shakeSequence = SKAction.sequence(shakeActions)
-        stonesNode.run(shakeSequence)
-        boardBackground.run(shakeSequence)
+        // Screen shake effect! (skip if reduce motion is enabled)
+        if !reduceMotion {
+            let shakeAmount: CGFloat = isPerfectWin ? 12 : (isQuickWin ? 10 : 8)
+            let shakeDuration = 0.05
+            let shakeActions = [
+                SKAction.moveBy(x: shakeAmount, y: shakeAmount, duration: shakeDuration),
+                SKAction.moveBy(x: -shakeAmount * 2, y: -shakeAmount, duration: shakeDuration),
+                SKAction.moveBy(x: shakeAmount * 2, y: -shakeAmount, duration: shakeDuration),
+                SKAction.moveBy(x: -shakeAmount * 2, y: shakeAmount * 2, duration: shakeDuration),
+                SKAction.moveBy(x: shakeAmount * 2, y: -shakeAmount, duration: shakeDuration),
+                SKAction.moveBy(x: -shakeAmount, y: -shakeAmount, duration: shakeDuration)
+            ]
+            let shakeSequence = SKAction.sequence(shakeActions)
+            stonesNode.run(shakeSequence)
+            boardBackground.run(shakeSequence)
+        }
 
         // Highlight winning line with glowing effect
         highlightWinningLine()
@@ -1120,53 +1204,62 @@ class GameScene: SKScene {
             showAchievementBadge(text: text, color: bamboo)
         }
 
-        // Animate status label
-        let scaleUp = SKAction.scale(to: 1.15, duration: 0.3)
-        scaleUp.timingMode = .easeOut
-        let scaleDown = SKAction.scale(to: 1.0, duration: 0.2)
-        scaleDown.timingMode = .easeInEaseOut
-        let bounce = SKAction.sequence([scaleUp, scaleDown])
-        statusLabel.run(bounce)
-
-        // Confetti particles around the board
-        let centerX = size.width / 2
-        let centerY = boardOffset.y + (cellSize * CGFloat(board.size) / 2)
-
-        for _ in 0..<50 {
-            let confetti = SKShapeNode(circleOfRadius: CGFloat.random(in: 4...7))
-            let colors: [SKColor] = [
-                SKColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1.0),
-                SKColor(red: 0.3, green: 0.8, blue: 1.0, alpha: 1.0),
-                SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 1.0),
-                SKColor(red: 0.5, green: 1.0, blue: 0.5, alpha: 1.0),
-                SKColor(red: 1.0, green: 0.5, blue: 1.0, alpha: 1.0)
-            ]
-            confetti.fillColor = colors.randomElement()!
-            confetti.strokeColor = .clear
-            confetti.position = CGPoint(x: centerX, y: centerY)
-            confetti.zPosition = 20
-
-            let angle = CGFloat.random(in: 0...(2 * .pi))
-            let distance = CGFloat.random(in: 100...250)
-            let endX = centerX + cos(angle) * distance
-            let endY = centerY + sin(angle) * distance
-
-            let move = SKAction.move(to: CGPoint(x: endX, y: endY), duration: 1.2)
-            move.timingMode = .easeOut
-            let fade = SKAction.fadeOut(withDuration: 1.0)
-            let rotate = SKAction.rotate(byAngle: CGFloat.random(in: -3...3), duration: 1.2)
-            let group = SKAction.group([move, fade, rotate])
-            let remove = SKAction.removeFromParent()
-
-            confetti.run(SKAction.sequence([group, remove]))
-            addChild(confetti)
+        // Animate status label (simplified for reduce motion)
+        if !reduceMotion {
+            let scaleUp = SKAction.scale(to: 1.15, duration: 0.3)
+            scaleUp.timingMode = .easeOut
+            let scaleDown = SKAction.scale(to: 1.0, duration: 0.2)
+            scaleDown.timingMode = .easeInEaseOut
+            let bounce = SKAction.sequence([scaleUp, scaleDown])
+            statusLabel.run(bounce)
         }
 
-        // Pulse the board
-        let boardPulse = SKAction.sequence([
-            SKAction.scale(to: 1.02, duration: 0.2),
-            SKAction.scale(to: 1.0, duration: 0.2)
-        ])
+        // Confetti particles around the board (skip if reduce motion is enabled)
+        if !reduceMotion {
+            let centerX = size.width / 2
+            let centerY = boardOffset.y + (cellSize * CGFloat(board.size) / 2)
+
+            for _ in 0..<50 {
+                let confetti = SKShapeNode(circleOfRadius: CGFloat.random(in: 4...7))
+                let colors: [SKColor] = [
+                    SKColor(red: 1.0, green: 0.3, blue: 0.3, alpha: 1.0),
+                    SKColor(red: 0.3, green: 0.8, blue: 1.0, alpha: 1.0),
+                    SKColor(red: 1.0, green: 0.8, blue: 0.2, alpha: 1.0),
+                    SKColor(red: 0.5, green: 1.0, blue: 0.5, alpha: 1.0),
+                    SKColor(red: 1.0, green: 0.5, blue: 1.0, alpha: 1.0)
+                ]
+                confetti.fillColor = colors.randomElement()!
+                confetti.strokeColor = .clear
+                confetti.position = CGPoint(x: centerX, y: centerY)
+                confetti.zPosition = 20
+
+                let angle = CGFloat.random(in: 0...(2 * .pi))
+                let distance = CGFloat.random(in: 100...250)
+                let endX = centerX + cos(angle) * distance
+                let endY = centerY + sin(angle) * distance
+
+                let move = SKAction.move(to: CGPoint(x: endX, y: endY), duration: 1.2)
+                move.timingMode = .easeOut
+                let fade = SKAction.fadeOut(withDuration: 1.0)
+                let rotate = SKAction.rotate(byAngle: CGFloat.random(in: -3...3), duration: 1.2)
+                let group = SKAction.group([move, fade, rotate])
+                let remove = SKAction.removeFromParent()
+
+                confetti.run(SKAction.sequence([group, remove]))
+                addChild(confetti)
+            }
+        }
+
+        // Pulse the board (skip if reduce motion is enabled)
+        let boardPulse: SKAction
+        if reduceMotion {
+            boardPulse = SKAction.wait(forDuration: 0.1)
+        } else {
+            boardPulse = SKAction.sequence([
+                SKAction.scale(to: 1.02, duration: 0.2),
+                SKAction.scale(to: 1.0, duration: 0.2)
+            ])
+        }
         boardBackground.run(boardPulse)
 
         // Show share button
@@ -2938,6 +3031,8 @@ class GameScene: SKScene {
 
     private func redrawAllStones() {
         // Draw all stones from move history without animation
+        let highContrast = AccessibilityManager.shared.isHighContrastEnabled
+
         for move in board.getMoveHistory() {
             let player = move.player
             let row = move.row
@@ -2950,8 +3045,15 @@ class GameScene: SKScene {
             let highlightColor = player == .black ? theme.blackStoneHighlight : theme.whiteStoneHighlight
 
             stone.fillColor = stoneColor.skColor
-            stone.strokeColor = highlightColor.skColor.withAlphaComponent(0.8)
-            stone.lineWidth = player == .black ? 2 : 2.5
+
+            // High contrast mode: stronger borders
+            if highContrast {
+                stone.strokeColor = player == .black ? SKColor.white : SKColor.black
+                stone.lineWidth = 3.0
+            } else {
+                stone.strokeColor = highlightColor.skColor.withAlphaComponent(0.8)
+                stone.lineWidth = player == .black ? 2 : 2.5
+            }
 
             stone.position = CGPoint(
                 x: boardOffset.x + CGFloat(col) * cellSize,
@@ -3006,6 +3108,9 @@ class GameScene: SKScene {
             }
 
             stonesNode.addChild(stone)
+
+            // Add colorblind marker if enabled
+            AccessibilityManager.shared.addColorblindMarker(to: stone, player: player, radius: stoneRadius)
         }
 
         updateStatusLabel()

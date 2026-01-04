@@ -42,13 +42,25 @@ class GomokuAI {
         var candidateMoves = getCandidateMoves(board: board)
 
         if candidateMoves.isEmpty {
-            // First move - place in center with slight randomization for variety
+            // First move - place in or near center with randomization for variety
             let center = board.size / 2
-            if difficulty == .easy {
+            switch difficulty {
+            case .easy:
                 let offset = Int.random(in: -2...2)
                 return (center + offset, center + offset)
+            case .medium:
+                // Small variation for medium
+                let offsets = [0, 0, 0, -1, 1]
+                let rowOffset = offsets.randomElement() ?? 0
+                let colOffset = offsets.randomElement() ?? 0
+                return (center + rowOffset, center + colOffset)
+            case .hard:
+                // Slight variation even for hard - still strong but not robotic
+                let offsets = [0, 0, 0, 0, -1, 1]
+                let rowOffset = offsets.randomElement() ?? 0
+                let colOffset = offsets.randomElement() ?? 0
+                return (center + rowOffset, center + colOffset)
             }
-            return (center, center)
         }
 
         // CRITICAL: Check for immediate win (all difficulties)
@@ -94,9 +106,9 @@ class GomokuAI {
             return candidateMoves[Int.random(in: 1...min(3, candidateMoves.count - 1))]
         }
 
-        // Use minimax for best move
+        // Use minimax for best move, collecting all moves with the best score
         var bestScore = Int.min
-        var bestMove: (Int, Int)?
+        var bestMoves: [(Int, Int)] = []
 
         for move in candidateMoves {
             let testBoard = GomokuBoard(copying: board)
@@ -105,12 +117,19 @@ class GomokuAI {
 
                 if score > bestScore {
                     bestScore = score
-                    bestMove = move
+                    bestMoves = [move]
+                } else if score == bestScore {
+                    // Collect all equally good moves for variety
+                    bestMoves.append(move)
                 }
             }
         }
 
-        return bestMove ?? candidateMoves.first
+        // Randomly select among equally good moves for variety
+        if !bestMoves.isEmpty {
+            return bestMoves.randomElement()
+        }
+        return candidateMoves.first
     }
 
     private func minimax(board: GomokuBoard, depth: Int, alpha: Int, beta: Int, isMaximizing: Bool, player: Player) -> Int {

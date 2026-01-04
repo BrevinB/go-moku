@@ -41,12 +41,18 @@ class OnlineGameScene: SKScene {
     private var cancelButton: SKShapeNode?
     private var cancelButtonLabel: SKLabelNode?
 
+    // Network status UI
+    private var offlineBanner: SKNode?
+    private var retryButton: SKShapeNode?
+    private var errorOverlay: SKNode?
+
     // Theme reference for convenience
     private var theme: BoardTheme { ThemeManager.shared.currentTheme }
 
     // UI Colors
     private let bamboo = SKColor(red: 0.45, green: 0.52, blue: 0.35, alpha: 1.0)
     private let accentRed = SKColor(red: 0.75, green: 0.22, blue: 0.17, alpha: 1.0)
+    private let warningOrange = SKColor(red: 0.95, green: 0.65, blue: 0.25, alpha: 1.0)
 
     private func makeShadow(for shape: SKShapeNode, offset: CGPoint = CGPoint(x: 4, y: -4), alpha: CGFloat = 0.25) -> SKShapeNode? {
         guard let path = shape.path else { return nil }
@@ -101,9 +107,27 @@ class OnlineGameScene: SKScene {
             object: nil
         )
 
-        // Show waiting indicator if it's not our turn
-        if !TurnBasedMatchManager.shared.isMyTurn {
-            showWaitingIndicator()
+        // Listen for network status changes
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleNetworkStatusChanged(_:)),
+            name: .networkStatusChanged,
+            object: nil
+        )
+
+        // Validate match state
+        if let error = TurnBasedMatchManager.shared.validateMatch() {
+            handleMatchError(error)
+        } else {
+            // Show waiting indicator if it's not our turn
+            if !TurnBasedMatchManager.shared.isMyTurn {
+                showWaitingIndicator()
+            }
+        }
+
+        // Check initial network status
+        if !NetworkMonitor.shared.isConnected {
+            showOfflineBanner()
         }
     }
 
@@ -516,6 +540,10 @@ class OnlineGameScene: SKScene {
         }
 
         stonesNode.addChild(stone)
+
+        // Add colorblind marker if enabled
+        AccessibilityManager.shared.addColorblindMarker(to: stone, player: player, radius: stoneRadius)
+
         return stone
     }
 
@@ -599,7 +627,7 @@ class OnlineGameScene: SKScene {
                 // Show sending indicator while move is being sent
                 showSendingIndicator()
 
-                // Send move to opponent
+                // Send move to opponent (includes automatic retry)
                 TurnBasedMatchManager.shared.makeMove(row: row, col: col) { [weak self] success, error in
                     guard let self = self else { return }
 
@@ -611,7 +639,13 @@ class OnlineGameScene: SKScene {
                             // Rollback: undo the move and remove the stone
                             print("Failed to send move: \(error?.localizedDescription ?? "Unknown error")")
                             self.rollbackFailedMove()
-                            self.showMoveFailedAlert()
+
+                            // Handle specific error types
+                            if let matchError = error {
+                                self.handleMatchError(matchError)
+                            } else {
+                                self.showMoveFailedAlert(error: nil)
+                            }
                         } else {
                             self.pendingMovePosition = nil
                             self.lastPlacedStoneNode = nil
@@ -901,17 +935,31 @@ class OnlineGameScene: SKScene {
         updateStatusLabel()
     }
 
-    private func showMoveFailedAlert() {
+    private func showMoveFailedAlert(error: MatchError?) {
         guard let view = self.view,
               let viewController = view.window?.rootViewController else { return }
 
+        let message: String
+        if let error = error {
+            message = error.localizedDescription ?? "Unable to send your move."
+        } else {
+            message = "Unable to send your move. Please check your connection and try again."
+        }
+
         let alert = UIAlertController(
             title: "Move Failed",
-            message: "Unable to send your move. Please check your connection and try again.",
+            message: message,
             preferredStyle: .alert
         )
 
-        alert.addAction(UIAlertAction(title: "OK", style: .default))
+        // Add retry button if there's a pending move and error is retryable
+        if TurnBasedMatchManager.shared.hasPendingMove && (error?.isRetryable ?? true) {
+            alert.addAction(UIAlertAction(title: "Retry", style: .default) { [weak self] _ in
+                self?.retryLastMove()
+            })
+        }
+
+        alert.addAction(UIAlertAction(title: "OK", style: .cancel))
 
         viewController.present(alert, animated: true)
     }
@@ -919,12 +967,20 @@ class OnlineGameScene: SKScene {
     private func resignGame() {
         SoundManager.shared.buttonTapped()
 
+        // Check network before resigning
+        guard NetworkMonitor.shared.isConnected else {
+            showOfflineBanner()
+            return
+        }
+
         TurnBasedMatchManager.shared.resignMatch { [weak self] error in
-            if let error = error {
-                print("Error resigning: \(error.localizedDescription)")
-            }
             DispatchQueue.main.async {
-                self?.goBackToMenu()
+                if let error = error {
+                    print("Error resigning: \(error.localizedDescription ?? "Unknown")")
+                    self?.handleMatchError(error)
+                } else {
+                    self?.goBackToMenu()
+                }
             }
         }
     }
@@ -982,13 +1038,35 @@ class OnlineGameScene: SKScene {
         // Reload match data when returning to foreground
         guard let matchID = match?.matchID else { return }
 
+        // Check network before attempting to load
+        guard NetworkMonitor.shared.isConnected else {
+            showOfflineBanner()
+            return
+        }
+
         GKTurnBasedMatch.load(withID: matchID) { [weak self] loadedMatch, error in
-            guard let self = self, let loadedMatch = loadedMatch, error == nil else { return }
+            guard let self = self else { return }
 
             DispatchQueue.main.async {
+                if let error = error {
+                    self.handleMatchError(MatchError.from(error))
+                    return
+                }
+
+                guard let loadedMatch = loadedMatch else {
+                    self.handleMatchError(.matchInvalid)
+                    return
+                }
+
                 // Update the match reference
                 self.match = loadedMatch
                 TurnBasedMatchManager.shared.setCurrentMatch(loadedMatch)
+
+                // Check for match validation errors
+                if let validationError = TurnBasedMatchManager.shared.validateMatch() {
+                    self.handleMatchError(validationError)
+                    return
+                }
 
                 // Refresh the board
                 self.updateBoardFromMatchData()
@@ -1003,12 +1081,250 @@ class OnlineGameScene: SKScene {
         }
     }
 
+    @objc private func handleNetworkStatusChanged(_ notification: Notification) {
+        guard let userInfo = notification.userInfo,
+              let isConnected = userInfo["isConnected"] as? Bool else { return }
+
+        DispatchQueue.main.async { [weak self] in
+            if isConnected {
+                self?.hideOfflineBanner()
+                // Try to refresh match data when reconnecting
+                self?.refreshMatchAfterReconnect()
+            } else {
+                self?.showOfflineBanner()
+            }
+        }
+    }
+
+    // MARK: - Network Status UI
+
+    private func showOfflineBanner() {
+        guard offlineBanner == nil else { return }
+
+        let banner = SKNode()
+        banner.name = "offlineBanner"
+        banner.zPosition = 100
+
+        let bg = SKShapeNode(rectOf: CGSize(width: size.width, height: 44))
+        bg.fillColor = warningOrange
+        bg.strokeColor = .clear
+        bg.position = CGPoint(x: size.width / 2, y: size.height - 22)
+        banner.addChild(bg)
+
+        let icon = SKLabelNode(fontNamed: "SF Pro Rounded")
+        icon.text = "⚠️"
+        icon.fontSize = 16
+        icon.position = CGPoint(x: size.width / 2 - 70, y: size.height - 28)
+        banner.addChild(icon)
+
+        let label = SKLabelNode(fontNamed: "SF Pro Rounded")
+        label.text = "No Internet Connection"
+        label.fontSize = 14
+        label.fontColor = .white
+        label.position = CGPoint(x: size.width / 2, y: size.height - 28)
+        banner.addChild(label)
+
+        banner.alpha = 0
+        addChild(banner)
+
+        let fadeIn = SKAction.fadeIn(withDuration: 0.3)
+        banner.run(fadeIn)
+
+        offlineBanner = banner
+    }
+
+    private func hideOfflineBanner() {
+        guard let banner = offlineBanner else { return }
+
+        let fadeOut = SKAction.fadeOut(withDuration: 0.3)
+        let remove = SKAction.removeFromParent()
+        banner.run(SKAction.sequence([fadeOut, remove]))
+        offlineBanner = nil
+    }
+
+    private func refreshMatchAfterReconnect() {
+        TurnBasedMatchManager.shared.refreshMatch { [weak self] error in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                if let error = error {
+                    // Only show error if it's not a network issue (we just reconnected)
+                    if case .networkUnavailable = error {
+                        return
+                    }
+                    self.handleMatchError(error)
+                } else {
+                    self.updateBoardFromMatchData()
+                    self.updateStatusLabel()
+                }
+            }
+        }
+    }
+
+    // MARK: - Error Handling
+
+    private func handleMatchError(_ error: MatchError) {
+        switch error {
+        case .networkUnavailable:
+            showOfflineBanner()
+
+        case .opponentQuit:
+            showMatchEndedOverlay(
+                title: "Opponent Left",
+                message: "Your opponent has left the match.",
+                showRetry: false
+            )
+
+        case .matchExpired:
+            showMatchEndedOverlay(
+                title: "Match Expired",
+                message: "This match has expired.",
+                showRetry: false
+            )
+
+        case .matchInvalid:
+            showMatchEndedOverlay(
+                title: "Match Unavailable",
+                message: "This match is no longer available.",
+                showRetry: false
+            )
+
+        case .timeout:
+            showErrorAlert(
+                title: "Connection Timeout",
+                message: "The request took too long. Please try again.",
+                showRetry: true
+            )
+
+        case .serverError:
+            showErrorAlert(
+                title: "Server Error",
+                message: "There was a problem with the server. Please try again.",
+                showRetry: true
+            )
+
+        default:
+            showErrorAlert(
+                title: "Error",
+                message: error.localizedDescription ?? "An unknown error occurred.",
+                showRetry: error.isRetryable
+            )
+        }
+    }
+
+    private func showMatchEndedOverlay(title: String, message: String, showRetry: Bool) {
+        // Remove any existing overlay
+        errorOverlay?.removeFromParent()
+
+        let overlay = SKNode()
+        overlay.name = "errorOverlay"
+        overlay.zPosition = 150
+
+        // Dim background
+        let dimBg = SKShapeNode(rect: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        dimBg.fillColor = SKColor.black.withAlphaComponent(0.6)
+        dimBg.strokeColor = .clear
+        overlay.addChild(dimBg)
+
+        // Modal background
+        let modal = SKShapeNode(rectOf: CGSize(width: 280, height: 180), cornerRadius: 16)
+        modal.fillColor = theme.statusBackgroundColor.skColor
+        modal.strokeColor = theme.statusStrokeColor.skColor
+        modal.lineWidth = 2
+        modal.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.addChild(modal)
+
+        // Title
+        let titleLabel = SKLabelNode(fontNamed: "SF Pro Rounded")
+        titleLabel.text = title
+        titleLabel.fontSize = 20
+        titleLabel.fontColor = theme.statusTextColor.skColor
+        titleLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 + 50)
+        overlay.addChild(titleLabel)
+
+        // Message
+        let messageLabel = SKLabelNode(fontNamed: "SF Pro Rounded")
+        messageLabel.text = message
+        messageLabel.fontSize = 14
+        messageLabel.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.8)
+        messageLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 + 15)
+        messageLabel.numberOfLines = 2
+        messageLabel.preferredMaxLayoutWidth = 240
+        overlay.addChild(messageLabel)
+
+        // Back to Menu button
+        let menuButton = SKShapeNode(rectOf: CGSize(width: 200, height: 44), cornerRadius: 22)
+        menuButton.fillColor = bamboo
+        menuButton.strokeColor = .clear
+        menuButton.position = CGPoint(x: size.width / 2, y: size.height / 2 - 45)
+        menuButton.name = "errorMenuButton"
+        overlay.addChild(menuButton)
+
+        let menuLabel = SKLabelNode(fontNamed: "SF Pro Rounded")
+        menuLabel.text = "Back to Menu"
+        menuLabel.fontSize = 16
+        menuLabel.fontColor = .white
+        menuLabel.verticalAlignmentMode = .center
+        menuLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 45)
+        menuLabel.name = "errorMenuButton"
+        overlay.addChild(menuLabel)
+
+        overlay.alpha = 0
+        addChild(overlay)
+        overlay.run(SKAction.fadeIn(withDuration: 0.3))
+
+        errorOverlay = overlay
+    }
+
+    private func showErrorAlert(title: String, message: String, showRetry: Bool) {
+        guard let view = self.view,
+              let viewController = view.window?.rootViewController else { return }
+
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+
+        if showRetry && TurnBasedMatchManager.shared.hasPendingMove {
+            alert.addAction(UIAlertAction(title: "Retry", style: .default) { [weak self] _ in
+                self?.retryLastMove()
+            })
+        }
+
+        alert.addAction(UIAlertAction(title: "OK", style: .default))
+
+        viewController.present(alert, animated: true)
+    }
+
+    private func retryLastMove() {
+        showSendingIndicator()
+
+        TurnBasedMatchManager.shared.retryPendingMove { [weak self] success, error in
+            guard let self = self else { return }
+
+            DispatchQueue.main.async {
+                self.hideSendingIndicator()
+
+                if success {
+                    self.updateStatusLabel()
+                    self.showWaitingIndicator()
+                } else if let error = error {
+                    self.handleMatchError(error)
+                }
+            }
+        }
+    }
+
     // MARK: - Touch Handling
 
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
         let nodes = self.nodes(at: location)
+
+        // Handle error overlay menu button
+        if nodes.contains(where: { $0.name == "errorMenuButton" }) {
+            SoundManager.shared.buttonTapped()
+            goBackToMenu()
+            return
+        }
 
         if nodes.contains(where: { $0.name == "backButton" }) {
             SoundManager.shared.buttonTapped()
@@ -1035,6 +1351,11 @@ class OnlineGameScene: SKScene {
         // Handle cancel button
         if nodes.contains(where: { $0.name == "cancelButton" }) {
             cancelPendingMove()
+            return
+        }
+
+        // Block interaction if offline
+        if !NetworkMonitor.shared.isConnected {
             return
         }
 

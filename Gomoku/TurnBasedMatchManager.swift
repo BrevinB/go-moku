@@ -8,6 +8,80 @@
 import GameKit
 import Foundation
 
+// MARK: - Match Error Types
+enum MatchError: Error, LocalizedError {
+    case notYourTurn
+    case noActiveMatch
+    case encodingFailed
+    case decodingFailed
+    case networkUnavailable
+    case matchExpired
+    case matchInvalid
+    case opponentQuit
+    case timeout
+    case serverError(underlying: Error)
+    case unknown(underlying: Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .notYourTurn:
+            return "It's not your turn"
+        case .noActiveMatch:
+            return "No active match found"
+        case .encodingFailed:
+            return "Failed to save game state"
+        case .decodingFailed:
+            return "Failed to load game state"
+        case .networkUnavailable:
+            return "No internet connection"
+        case .matchExpired:
+            return "This match has expired"
+        case .matchInvalid:
+            return "This match is no longer valid"
+        case .opponentQuit:
+            return "Your opponent has left the match"
+        case .timeout:
+            return "Request timed out"
+        case .serverError(let error):
+            return "Server error: \(error.localizedDescription)"
+        case .unknown(let error):
+            return error.localizedDescription
+        }
+    }
+
+    var isRetryable: Bool {
+        switch self {
+        case .networkUnavailable, .timeout, .serverError:
+            return true
+        default:
+            return false
+        }
+    }
+
+    static func from(_ error: Error) -> MatchError {
+        let nsError = error as NSError
+
+        // Check for specific Game Center error codes
+        switch nsError.code {
+        case GKError.notAuthenticated.rawValue:
+            return .networkUnavailable
+        case GKError.communicationsFailure.rawValue:
+            return .networkUnavailable
+        case GKError.invalidPlayer.rawValue:
+            return .opponentQuit
+        case GKError.matchNotConnected.rawValue:
+            return .networkUnavailable
+        case GKError.connectionTimeout.rawValue:
+            return .timeout
+        default:
+            if nsError.domain == NSURLErrorDomain {
+                return .networkUnavailable
+            }
+            return .serverError(underlying: error)
+        }
+    }
+}
+
 // MARK: - Match Data Model
 struct MatchData: Codable {
     var moves: [EncodedMove]
@@ -35,12 +109,38 @@ struct MatchData: Codable {
     }
 }
 
+// MARK: - Retry Configuration
+struct RetryConfig {
+    let maxAttempts: Int
+    let initialDelay: TimeInterval
+    let maxDelay: TimeInterval
+    let backoffMultiplier: Double
+
+    static let `default` = RetryConfig(
+        maxAttempts: 3,
+        initialDelay: 1.0,
+        maxDelay: 10.0,
+        backoffMultiplier: 2.0
+    )
+
+    func delay(for attempt: Int) -> TimeInterval {
+        let delay = initialDelay * pow(backoffMultiplier, Double(attempt - 1))
+        return min(delay, maxDelay)
+    }
+}
+
 // MARK: - Turn-Based Match Manager
 class TurnBasedMatchManager {
     static let shared = TurnBasedMatchManager()
 
     private(set) var currentMatch: GKTurnBasedMatch?
     private(set) var matchData: MatchData?
+
+    // Retry configuration
+    private let retryConfig = RetryConfig.default
+
+    // Track pending operations for retry
+    private var pendingMoveData: (row: Int, col: Int, originalData: MatchData)?
 
     var isMyTurn: Bool {
         guard let match = currentMatch else { return false }
@@ -57,6 +157,38 @@ class TurnBasedMatchManager {
         guard let match = currentMatch else { return "Opponent" }
         let opponent = match.participants.first { $0.player != GKLocalPlayer.local }
         return opponent?.player?.displayName ?? "Opponent"
+    }
+
+    /// Returns the current match status
+    var matchStatus: MatchStatus {
+        guard let match = currentMatch else { return .noMatch }
+
+        switch match.status {
+        case .open:
+            // Check if opponent quit
+            let opponent = match.participants.first { $0.player != GKLocalPlayer.local }
+            if opponent?.matchOutcome == .quit {
+                return .opponentQuit
+            }
+            return .active
+        case .ended:
+            return .ended
+        case .matching:
+            return .waitingForOpponent
+        case .unknown:
+            return .invalid
+        @unknown default:
+            return .invalid
+        }
+    }
+
+    enum MatchStatus {
+        case noMatch
+        case waitingForOpponent
+        case active
+        case ended
+        case opponentQuit
+        case invalid
     }
 
     private init() {
@@ -115,13 +247,22 @@ class TurnBasedMatchManager {
 
     // MARK: - Game Actions
 
-    func makeMove(row: Int, col: Int, completion: @escaping (Bool, Error?) -> Void) {
+    func makeMove(row: Int, col: Int, completion: @escaping (Bool, MatchError?) -> Void) {
+        // Check network connectivity first
+        guard NetworkMonitor.shared.isConnected else {
+            completion(false, .networkUnavailable)
+            return
+        }
+
         guard let match = currentMatch,
               var data = matchData,
               isMyTurn else {
-            completion(false, NSError(domain: "TurnBasedMatch", code: -1, userInfo: [NSLocalizedDescriptionKey: "Not your turn"]))
+            completion(false, .notYourTurn)
             return
         }
+
+        // Store original data for rollback
+        let originalData = data
 
         // Determine player index (0 = first participant/black, 1 = second/white)
         let localIndex = match.participants.firstIndex { $0.player == GKLocalPlayer.local } ?? 0
@@ -132,29 +273,107 @@ class TurnBasedMatchManager {
         data.currentPlayerIndex = localIndex == 0 ? 1 : 0
 
         matchData = data
+        pendingMoveData = (row, col, originalData)
 
         // Encode and send
         guard let encodedData = encodeMatchData(data) else {
-            completion(false, NSError(domain: "TurnBasedMatch", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed to encode match data"]))
+            matchData = originalData
+            pendingMoveData = nil
+            completion(false, .encodingFailed)
             return
         }
 
         // Get next participant
         let nextParticipants = match.participants.filter { $0.player != GKLocalPlayer.local }
 
+        // Execute with retry
+        executeMoveWithRetry(
+            match: match,
+            nextParticipants: nextParticipants,
+            encodedData: encodedData,
+            originalData: originalData,
+            attempt: 1,
+            completion: completion
+        )
+    }
+
+    private func executeMoveWithRetry(
+        match: GKTurnBasedMatch,
+        nextParticipants: [GKTurnBasedParticipant],
+        encodedData: Data,
+        originalData: MatchData,
+        attempt: Int,
+        completion: @escaping (Bool, MatchError?) -> Void
+    ) {
         match.endTurn(
             withNextParticipants: nextParticipants,
             turnTimeout: GKTurnTimeoutDefault,
             match: encodedData
-        ) { error in
-            completion(error == nil, error)
+        ) { [weak self] error in
+            guard let self = self else { return }
+
+            if let error = error {
+                let matchError = MatchError.from(error)
+
+                // Check if we should retry
+                if matchError.isRetryable && attempt < self.retryConfig.maxAttempts {
+                    let delay = self.retryConfig.delay(for: attempt)
+                    print("TurnBasedMatchManager: Retry attempt \(attempt + 1) after \(delay)s")
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                        self.executeMoveWithRetry(
+                            match: match,
+                            nextParticipants: nextParticipants,
+                            encodedData: encodedData,
+                            originalData: originalData,
+                            attempt: attempt + 1,
+                            completion: completion
+                        )
+                    }
+                } else {
+                    // Rollback on final failure
+                    self.matchData = originalData
+                    self.pendingMoveData = nil
+                    completion(false, matchError)
+                }
+            } else {
+                self.pendingMoveData = nil
+                completion(true, nil)
+            }
         }
     }
 
-    func endMatchWithWin(completion: @escaping (Error?) -> Void) {
+    /// Retry the last failed move if one exists
+    func retryPendingMove(completion: @escaping (Bool, MatchError?) -> Void) {
+        guard let pending = pendingMoveData else {
+            completion(false, .noActiveMatch)
+            return
+        }
+
+        // Restore original state and try again
+        matchData = pending.originalData
+        makeMove(row: pending.row, col: pending.col, completion: completion)
+    }
+
+    /// Check if there's a pending move that can be retried
+    var hasPendingMove: Bool {
+        return pendingMoveData != nil
+    }
+
+    /// Clear any pending move data
+    func clearPendingMove() {
+        pendingMoveData = nil
+    }
+
+    func endMatchWithWin(completion: @escaping (MatchError?) -> Void) {
+        guard NetworkMonitor.shared.isConnected else {
+            completion(.networkUnavailable)
+            return
+        }
+
         guard let match = currentMatch,
               var data = matchData else {
-            completion(NSError(domain: "TurnBasedMatch", code: -1, userInfo: [NSLocalizedDescriptionKey: "No active match"]))
+            completion(.noActiveMatch)
             return
         }
 
@@ -162,7 +381,7 @@ class TurnBasedMatchManager {
         matchData = data
 
         guard let encodedData = encodeMatchData(data) else {
-            completion(NSError(domain: "TurnBasedMatch", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed to encode match data"]))
+            completion(.encodingFailed)
             return
         }
 
@@ -173,20 +392,28 @@ class TurnBasedMatchManager {
             } else if participant.player != nil {
                 participant.matchOutcome = .lost
             } else {
-                // Participant hasn't joined yet - they quit by default
                 participant.matchOutcome = .quit
             }
         }
 
         match.endMatchInTurn(withMatch: encodedData) { error in
-            completion(error)
+            if let error = error {
+                completion(MatchError.from(error))
+            } else {
+                completion(nil)
+            }
         }
     }
 
-    func endMatchWithLoss(completion: @escaping (Error?) -> Void) {
+    func endMatchWithLoss(completion: @escaping (MatchError?) -> Void) {
+        guard NetworkMonitor.shared.isConnected else {
+            completion(.networkUnavailable)
+            return
+        }
+
         guard let match = currentMatch,
               var data = matchData else {
-            completion(NSError(domain: "TurnBasedMatch", code: -1, userInfo: [NSLocalizedDescriptionKey: "No active match"]))
+            completion(.noActiveMatch)
             return
         }
 
@@ -194,31 +421,39 @@ class TurnBasedMatchManager {
         matchData = data
 
         guard let encodedData = encodeMatchData(data) else {
-            completion(NSError(domain: "TurnBasedMatch", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed to encode match data"]))
+            completion(.encodingFailed)
             return
         }
 
-        // Set outcomes (opponent won) - check that participants have valid players
+        // Set outcomes (opponent won)
         for participant in match.participants {
             if participant.player == GKLocalPlayer.local {
                 participant.matchOutcome = .lost
             } else if participant.player != nil {
                 participant.matchOutcome = .won
             } else {
-                // Participant hasn't joined yet - they quit by default
                 participant.matchOutcome = .quit
             }
         }
 
         match.endMatchInTurn(withMatch: encodedData) { error in
-            completion(error)
+            if let error = error {
+                completion(MatchError.from(error))
+            } else {
+                completion(nil)
+            }
         }
     }
 
-    func endMatchWithDraw(completion: @escaping (Error?) -> Void) {
+    func endMatchWithDraw(completion: @escaping (MatchError?) -> Void) {
+        guard NetworkMonitor.shared.isConnected else {
+            completion(.networkUnavailable)
+            return
+        }
+
         guard let match = currentMatch,
               var data = matchData else {
-            completion(NSError(domain: "TurnBasedMatch", code: -1, userInfo: [NSLocalizedDescriptionKey: "No active match"]))
+            completion(.noActiveMatch)
             return
         }
 
@@ -226,33 +461,39 @@ class TurnBasedMatchManager {
         matchData = data
 
         guard let encodedData = encodeMatchData(data) else {
-            completion(NSError(domain: "TurnBasedMatch", code: -2, userInfo: [NSLocalizedDescriptionKey: "Failed to encode match data"]))
+            completion(.encodingFailed)
             return
         }
 
-        // Set outcomes - check that participants have valid players
         for participant in match.participants {
             if participant.player != nil {
                 participant.matchOutcome = .tied
             } else {
-                // Participant hasn't joined yet - they quit by default
                 participant.matchOutcome = .quit
             }
         }
 
         match.endMatchInTurn(withMatch: encodedData) { error in
-            completion(error)
+            if let error = error {
+                completion(MatchError.from(error))
+            } else {
+                completion(nil)
+            }
         }
     }
 
-    func resignMatch(completion: @escaping (Error?) -> Void) {
+    func resignMatch(completion: @escaping (MatchError?) -> Void) {
+        guard NetworkMonitor.shared.isConnected else {
+            completion(.networkUnavailable)
+            return
+        }
+
         guard let match = currentMatch else {
-            completion(NSError(domain: "TurnBasedMatch", code: -1, userInfo: [NSLocalizedDescriptionKey: "No active match"]))
+            completion(.noActiveMatch)
             return
         }
 
         if isMyTurn {
-            // If it's our turn, quit in turn
             let nextParticipants = match.participants.filter { $0.player != GKLocalPlayer.local }
             match.participantQuitInTurn(
                 with: .quit,
@@ -260,13 +501,80 @@ class TurnBasedMatchManager {
                 turnTimeout: GKTurnTimeoutDefault,
                 match: match.matchData ?? Data()
             ) { error in
-                completion(error)
+                if let error = error {
+                    completion(MatchError.from(error))
+                } else {
+                    completion(nil)
+                }
             }
         } else {
-            // If it's not our turn, quit out of turn
             match.participantQuitOutOfTurn(with: .quit) { error in
-                completion(error)
+                if let error = error {
+                    completion(MatchError.from(error))
+                } else {
+                    completion(nil)
+                }
             }
+        }
+    }
+
+    // MARK: - Match Validation
+
+    /// Validates the current match state and returns any issues
+    func validateMatch() -> MatchError? {
+        guard let match = currentMatch else {
+            return .noActiveMatch
+        }
+
+        // Check match status
+        switch match.status {
+        case .ended:
+            return .matchExpired
+        case .unknown:
+            return .matchInvalid
+        default:
+            break
+        }
+
+        // Check if opponent quit
+        let opponent = match.participants.first { $0.player != GKLocalPlayer.local }
+        if opponent?.matchOutcome == .quit {
+            return .opponentQuit
+        }
+
+        // Check data integrity
+        if match.matchData != nil && matchData == nil {
+            return .decodingFailed
+        }
+
+        return nil
+    }
+
+    /// Reload match data from server
+    func refreshMatch(completion: @escaping (MatchError?) -> Void) {
+        guard NetworkMonitor.shared.isConnected else {
+            completion(.networkUnavailable)
+            return
+        }
+
+        guard let matchID = currentMatch?.matchID else {
+            completion(.noActiveMatch)
+            return
+        }
+
+        GKTurnBasedMatch.load(withID: matchID) { [weak self] match, error in
+            if let error = error {
+                completion(MatchError.from(error))
+                return
+            }
+
+            guard let match = match else {
+                completion(.matchInvalid)
+                return
+            }
+
+            self?.setCurrentMatch(match)
+            completion(nil)
         }
     }
 

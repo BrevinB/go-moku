@@ -78,7 +78,7 @@ class MenuScene: SKScene {
 
     private func refreshMenuButtons() {
         // Remove existing menu buttons
-        for name in ["continueGame", "continueOnlineMatch", "playAI", "playFriend", "playOnline", "statistics", "settings"] {
+        for name in ["continueGame", "continueOnlineMatch", "playAI", "playFriend", "playOnline", "statistics", "settings", "howToPlay"] {
             enumerateChildNodes(withName: name) { node, _ in
                 node.removeFromParent()
             }
@@ -676,6 +676,14 @@ class MenuScene: SKScene {
             position: CGPoint(x: size.width / 2, y: currentY - spacing * 4),
             name: "settings"
         )
+
+        createMenuButton(
+            title: "How to Play",
+            subtitle: isZenTheme ? "遊び方" : "Learn the rules",
+            color: buttonLightBlue,
+            position: CGPoint(x: size.width / 2, y: currentY - spacing * 5),
+            name: "howToPlay"
+        )
     }
 
     private func createMenuButton(title: String, subtitle: String, color: SKColor, position: CGPoint, name: String) {
@@ -729,7 +737,7 @@ class MenuScene: SKScene {
 
         for node in nodes {
             guard let name = node.name else { continue }
-            if ["playAI", "playFriend", "playOnline", "continueOnlineMatch", "statistics", "settings", "gameCenter", "shopButton"].contains(name) {
+            if ["playAI", "playFriend", "playOnline", "continueOnlineMatch", "statistics", "settings", "howToPlay", "gameCenter", "shopButton"].contains(name) {
                 if let parent = findButtonContainer(node) {
                     parent.run(SKAction.scale(to: 0.96, duration: 0.1))
                 }
@@ -794,6 +802,7 @@ class MenuScene: SKScene {
         case "playOnline": startOnlineGame()
         case "statistics": showStatistics()
         case "settings": showSettings()
+        case "howToPlay": showHowToPlay()
         case "gameCenter": showGameCenter()
         case "shopButton": showShop()
         default: break
@@ -1167,6 +1176,13 @@ class MenuScene: SKScene {
     private func showSettings() {
         let transition = SKTransition.fade(withDuration: 0.4)
         let scene = SettingsScene(size: size)
+        scene.scaleMode = .aspectFill
+        view?.presentScene(scene, transition: transition)
+    }
+
+    private func showHowToPlay() {
+        let transition = SKTransition.fade(withDuration: 0.4)
+        let scene = HowToPlayScene(size: size)
         scene.scaleMode = .aspectFill
         view?.presentScene(scene, transition: transition)
     }

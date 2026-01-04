@@ -188,6 +188,7 @@ class OpeningBook {
         // This is a simplified tactical check for common patterns
 
         let size = board.size
+        var strongSquares: [(row: Int, col: Int)] = []
 
         // Look for "must-play" squares based on threat patterns
         for row in 0..<size {
@@ -196,12 +197,13 @@ class OpeningBook {
 
                 // Check if this creates a significant threat
                 if isStrongOpeningSquare(row: row, col: col, board: board, player: player) {
-                    return (row, col)
+                    strongSquares.append((row, col))
                 }
             }
         }
 
-        return nil
+        // Randomly select among strong squares for variety
+        return strongSquares.randomElement()
     }
 
     private func isStrongOpeningSquare(row: Int, col: Int, board: GomokuBoard, player: Player) -> Bool {
@@ -262,9 +264,9 @@ class OpeningBook {
         let (row, col) = position
 
         // Try extending in all 8 directions, prefer moves toward center
-        let directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+        let directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)].shuffled()
 
-        var bestMove: (row: Int, col: Int)?
+        var bestMoves: [(row: Int, col: Int)] = []
         var bestScore = Int.min
 
         for (dr, dc) in directions {
@@ -280,18 +282,23 @@ class OpeningBook {
 
                         if centralityScore > bestScore {
                             bestScore = centralityScore
-                            bestMove = (nr, nc)
+                            bestMoves = [(nr, nc)]
+                        } else if centralityScore == bestScore {
+                            bestMoves.append((nr, nc))
                         }
                     }
                 }
             }
         }
 
-        return bestMove
+        // Randomly select among equally good moves
+        return bestMoves.randomElement()
     }
 
     private func findLineExtension(moves: [Move], board: GomokuBoard) -> (row: Int, col: Int)? {
         guard moves.count >= 2 else { return nil }
+
+        var validExtensions: [(row: Int, col: Int)] = []
 
         // Check if any two moves are aligned
         for i in 0..<moves.count {
@@ -316,7 +323,7 @@ class OpeningBook {
 
                         if nr >= 0 && nr < board.size && nc >= 0 && nc < board.size {
                             if board.getPlayer(at: nr, col: nc) == .none {
-                                return (nr, nc)
+                                validExtensions.append((nr, nc))
                             }
                         }
                     }
@@ -324,7 +331,8 @@ class OpeningBook {
             }
         }
 
-        return nil
+        // Randomly select among valid extensions for variety
+        return validExtensions.randomElement()
     }
 
     private func findConnectingMove(moves: [Move], board: GomokuBoard) -> (row: Int, col: Int)? {
@@ -358,9 +366,15 @@ class OpeningBook {
             }
         }
 
-        // Return the highest scored candidate
-        if let best = candidateScores.max(by: { $0.score < $1.score }) {
-            return (best.row, best.col)
+        // Find the best score
+        guard let maxScore = candidateScores.map({ $0.score }).max() else { return nil }
+
+        // Collect all candidates with the best score
+        let bestCandidates = candidateScores.filter { $0.score == maxScore }
+
+        // Randomly select among equally good candidates for variety
+        if let selected = bestCandidates.randomElement() {
+            return (selected.row, selected.col)
         }
 
         return nil
