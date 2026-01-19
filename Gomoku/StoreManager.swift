@@ -11,23 +11,23 @@ import RevenueCat
 // MARK: - Coin Pack Definitions
 
 enum CoinPack: String, CaseIterable {
-    case small = "com.gomoku.coins.100"    // $0.99 = 100 coins (baseline)
-    case medium = "com.gomoku.coins.400"   // $2.99 = 400 coins (1.33x value)
-    case large = "com.gomoku.coins.1000"   // $4.99 = 1000 coins (2x value)
+    case small = "com.gomoku.coins.100"    // $0.99 = 1000 coins (baseline)
+    case medium = "com.gomoku.coins.400"   // $2.99 = 3000 coins (+50% value)
+    case large = "com.gomoku.coins.1000"   // $4.99 = 6000 coins (best value)
 
     var coinAmount: Int {
         switch self {
-        case .small: return 100
-        case .medium: return 400
-        case .large: return 1000
+        case .small: return 1000
+        case .medium: return 3000
+        case .large: return 6000
         }
     }
 
     var displayName: String {
         switch self {
-        case .small: return "100 Coins"
-        case .medium: return "400 Coins"
-        case .large: return "1000 Coins"
+        case .small: return "1,000 Coins"
+        case .medium: return "3,000 Coins"
+        case .large: return "6,000 Coins"
         }
     }
 
@@ -42,7 +42,7 @@ enum CoinPack: String, CaseIterable {
     var valueText: String? {
         switch self {
         case .small: return nil
-        case .medium: return "+33% Value"
+        case .medium: return "+50% Value"
         case .large: return "BEST VALUE"
         }
     }

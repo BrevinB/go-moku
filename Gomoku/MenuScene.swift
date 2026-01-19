@@ -1030,8 +1030,8 @@ class MenuScene: SKScene {
         addChild(overlay)
         overlay.run(SKAction.fadeAlpha(to: 1.0, duration: 0.25))
 
-        // Modal background
-        let modal = SKShapeNode(rectOf: CGSize(width: 300, height: 220), cornerRadius: 16)
+        // Modal background - increased height for better spacing
+        let modal = SKShapeNode(rectOf: CGSize(width: 300, height: 260), cornerRadius: 16)
         modal.fillColor = theme.statusBackgroundColor.skColor
         modal.strokeColor = theme.statusStrokeColor.skColor
         modal.lineWidth = 2
@@ -1051,7 +1051,7 @@ class MenuScene: SKScene {
         title.text = isZenTheme ? "中断中のゲーム" : "Game in Progress"
         title.fontSize = 22
         title.fontColor = theme.statusTextColor.skColor
-        title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 65)
+        title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 85)
         title.zPosition = 102
         title.name = "continuePromptOverlay"
         title.alpha = 0
@@ -1063,7 +1063,7 @@ class MenuScene: SKScene {
         subtitle.text = isZenTheme ? "ゲームを続けますか？" : "Would you like to continue?"
         subtitle.fontSize = 16
         subtitle.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.8)
-        subtitle.position = CGPoint(x: size.width / 2, y: size.height / 2 + 30)
+        subtitle.position = CGPoint(x: size.width / 2, y: size.height / 2 + 50)
         subtitle.zPosition = 102
         subtitle.name = "continuePromptOverlay"
         subtitle.alpha = 0
@@ -1071,10 +1071,10 @@ class MenuScene: SKScene {
         subtitle.run(SKAction.fadeIn(withDuration: 0.25))
 
         // Continue button
-        let continueBtn = SKShapeNode(rectOf: CGSize(width: 240, height: 50), cornerRadius: 12)
+        let continueBtn = SKShapeNode(rectOf: CGSize(width: 220, height: 52), cornerRadius: 12)
         continueBtn.fillColor = buttonGreen
         continueBtn.strokeColor = .clear
-        continueBtn.position = CGPoint(x: size.width / 2, y: size.height / 2 - 25)
+        continueBtn.position = CGPoint(x: size.width / 2, y: size.height / 2 - 10)
         continueBtn.zPosition = 102
         continueBtn.name = "promptContinue"
         continueBtn.alpha = 0
@@ -1086,7 +1086,7 @@ class MenuScene: SKScene {
         continueLabel.fontSize = 18
         continueLabel.fontColor = .white
         continueLabel.verticalAlignmentMode = .center
-        continueLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 25)
+        continueLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 10)
         continueLabel.zPosition = 103
         continueLabel.name = "promptContinue"
         continueLabel.alpha = 0
@@ -1094,10 +1094,10 @@ class MenuScene: SKScene {
         continueLabel.run(SKAction.fadeIn(withDuration: 0.25))
 
         // New Game button
-        let newGameBtn = SKShapeNode(rectOf: CGSize(width: 240, height: 50), cornerRadius: 12)
+        let newGameBtn = SKShapeNode(rectOf: CGSize(width: 220, height: 52), cornerRadius: 12)
         newGameBtn.fillColor = buttonGray
         newGameBtn.strokeColor = .clear
-        newGameBtn.position = CGPoint(x: size.width / 2, y: size.height / 2 - 85)
+        newGameBtn.position = CGPoint(x: size.width / 2, y: size.height / 2 - 75)
         newGameBtn.zPosition = 102
         newGameBtn.name = "promptNewGame"
         newGameBtn.alpha = 0
@@ -1109,7 +1109,7 @@ class MenuScene: SKScene {
         newGameLabel.fontSize = 18
         newGameLabel.fontColor = .white
         newGameLabel.verticalAlignmentMode = .center
-        newGameLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 85)
+        newGameLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 75)
         newGameLabel.zPosition = 103
         newGameLabel.name = "promptNewGame"
         newGameLabel.alpha = 0

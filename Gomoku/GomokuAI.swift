@@ -16,25 +16,46 @@ enum AIDifficulty: String, Codable {
 class GomokuAI {
     private let difficulty: AIDifficulty
     private let maxDepth: Int
+    private let candidateLimit: Int
+    private let suboptimalChance: Int      // Percentage chance to pick suboptimal move
+    private let blockOpenFourChance: Int   // Percentage chance to block open 4
+    private let seeOpenThreeChance: Int    // Percentage chance to detect open 3 threats
 
     init(difficulty: AIDifficulty) {
         self.difficulty = difficulty
         switch difficulty {
         case .easy:
-            self.maxDepth = 2  // Shallow but uses all tactical checks
+            // Beginners should learn then win consistently
+            self.maxDepth = 1
+            self.candidateLimit = 5
+            self.suboptimalChance = 40
+            self.blockOpenFourChance = 70
+            self.seeOpenThreeChance = 0     // Never sees open 3 threats
         case .medium:
-            self.maxDepth = 2  // Same depth but more candidates
+            // Requires thinking but beatable with basic strategy
+            self.maxDepth = 2
+            self.candidateLimit = 10
+            self.suboptimalChance = 10
+            self.blockOpenFourChance = 100
+            self.seeOpenThreeChance = 80    // Sometimes misses open 3
         case .hard:
-            self.maxDepth = 3  // Deeper search with optimizations
+            // Requires proper Gomoku knowledge to beat
+            self.maxDepth = 4
+            self.candidateLimit = 15
+            self.suboptimalChance = 0
+            self.blockOpenFourChance = 100
+            self.seeOpenThreeChance = 100   // Always sees threats
         }
     }
 
     func findBestMove(board: GomokuBoard, player: Player) -> (row: Int, col: Int)? {
-        // Try opening book first for faster, stronger early game play
-        // Medium and Hard difficulties use the opening book; Easy skips it for variety
-        if difficulty != .easy {
-            if let bookMove = OpeningBook.shared.getBookMove(board: board, player: player) {
-                return bookMove
+        // Only hard mode uses opening book, and only for first 2 moves
+        if difficulty == .hard {
+            let moveCount = board.getMoveHistory().count
+            if moveCount < 2 {
+                if let bookMove = OpeningBook.shared.getBookMove(board: board, player: player) {
+                    return bookMove
+                }
             }
         }
 
@@ -46,8 +67,9 @@ class GomokuAI {
             let center = board.size / 2
             switch difficulty {
             case .easy:
+                // More random placement for easy
                 let offset = Int.random(in: -2...2)
-                return (center + offset, center + offset)
+                return (center + offset, center + Int.random(in: -2...2))
             case .medium:
                 // Small variation for medium
                 let offsets = [0, 0, 0, -1, 1]
@@ -63,23 +85,38 @@ class GomokuAI {
             }
         }
 
-        // CRITICAL: Check for immediate win (all difficulties)
+        // CRITICAL: Check for immediate win (all difficulties always take the win)
         if let winMove = findWinningMove(board: board, player: player) {
             return winMove
         }
 
-        // CRITICAL: Block opponent's winning move (all difficulties)
+        // CRITICAL: Block opponent's winning move (all difficulties always block 5-in-a-row)
         if let blockMove = findWinningMove(board: board, player: player.opposite) {
             return blockMove
         }
 
-        // Check for open four - must block or create (all difficulties)
-        if let blockFour = findOpenFour(board: board, player: player.opposite) {
-            return blockFour
+        // Check for open four - probability based on difficulty
+        if Int.random(in: 1...100) <= blockOpenFourChance {
+            if let blockFour = findOpenFour(board: board, player: player.opposite) {
+                return blockFour
+            }
         }
 
-        if let createFour = findOpenFour(board: board, player: player) {
-            return createFour
+        // Try to create open four
+        if Int.random(in: 1...100) <= blockOpenFourChance {
+            if let createFour = findOpenFour(board: board, player: player) {
+                return createFour
+            }
+        }
+
+        // Check for open three threats - probability based on difficulty
+        if Int.random(in: 1...100) <= seeOpenThreeChance {
+            if let blockThree = findOpenThree(board: board, player: player.opposite) {
+                return blockThree
+            }
+            if let createThree = findOpenThree(board: board, player: player) {
+                return createThree
+            }
         }
 
         // Sort candidates by their heuristic value for better pruning and move ordering
@@ -89,21 +126,14 @@ class GomokuAI {
             return score1 > score2
         }
 
-        // Adaptive candidate limiting based on difficulty and board state
-        let limit: Int
-        switch difficulty {
-        case .easy:
-            limit = 8   // Fewer candidates, faster but still smart
-        case .medium:
-            limit = 10  // Balanced
-        case .hard:
-            limit = 12  // More thorough search
-        }
-        candidateMoves = Array(candidateMoves.prefix(limit))
+        // Limit candidates based on difficulty
+        candidateMoves = Array(candidateMoves.prefix(candidateLimit))
 
-        // For easy mode, occasionally pick a good-but-not-best move for variety
-        if difficulty == .easy && candidateMoves.count > 3 && Int.random(in: 0...100) < 25 {
-            return candidateMoves[Int.random(in: 1...min(3, candidateMoves.count - 1))]
+        // Chance to pick a suboptimal move for variety (easy/medium)
+        if suboptimalChance > 0 && candidateMoves.count > 2 && Int.random(in: 1...100) <= suboptimalChance {
+            // Pick from positions 2-4 instead of the best
+            let maxIndex = min(3, candidateMoves.count - 1)
+            return candidateMoves[Int.random(in: 1...maxIndex)]
         }
 
         // Use minimax for best move, collecting all moves with the best score
@@ -357,16 +387,34 @@ class GomokuAI {
         for (row, col) in candidates {
             for (dx, dy) in directions {
                 let pattern = analyzeLine(board: board, row: row, col: col, dx: dx, dy: dy, player: player)
+                // Only detect actual 4-in-a-row threats here
                 if pattern.count == 4 && pattern.openEnds >= 1 {
-                    return (row, col)
-                }
-                if pattern.count == 3 && pattern.openEnds == 2 {
                     return (row, col)
                 }
             }
         }
 
         return nil
+    }
+
+    private func findOpenThree(board: GomokuBoard, player: Player) -> (row: Int, col: Int)? {
+        let candidates = getCandidateMoves(board: board)
+        let directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+
+        var openThrees: [(row: Int, col: Int)] = []
+
+        for (row, col) in candidates {
+            for (dx, dy) in directions {
+                let pattern = analyzeLine(board: board, row: row, col: col, dx: dx, dy: dy, player: player)
+                // Open three: 3 stones with both ends open (very dangerous)
+                if pattern.count == 3 && pattern.openEnds == 2 {
+                    openThrees.append((row, col))
+                }
+            }
+        }
+
+        // Return random one for variety
+        return openThrees.randomElement()
     }
 
     private func getCandidateMoves(board: GomokuBoard) -> [(row: Int, col: Int)] {

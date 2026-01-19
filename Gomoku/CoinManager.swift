@@ -19,7 +19,7 @@ class CoinManager {
     static let shared = CoinManager()
 
     private let balanceKey = "coinBalance"
-    private let starterCoins = 50  // New players start with some coins
+    private let starterCoins = 250  // New players start with some coins
 
     private(set) var balance: Int {
         didSet {
@@ -55,18 +55,18 @@ class CoinManager {
         var earned = 0
 
         // Base reward for completing any game
-        let baseReward = 2
+        let baseReward = 10
         earned += baseReward
 
         // Bonus for winning (scales with difficulty)
         if result == .win, let difficulty = difficulty {
             switch difficulty {
             case .easy:
-                earned += 3   // 5 total
+                earned += 15   // 25 total
             case .medium:
-                earned += 5   // 7 total
+                earned += 25   // 35 total
             case .hard:
-                earned += 8   // 10 total
+                earned += 40   // 50 total
             }
         }
 

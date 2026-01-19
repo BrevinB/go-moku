@@ -55,6 +55,7 @@ class GameScene: SKScene {
     private var ai: GomokuAI!
     private var humanPlayer: Player = .black
     private var isAIThinking = false
+    private var gameGeneration: Int = 0  // Tracks game instance to prevent stale AI moves
 
     // Practice mode indicator
     private var practiceModeLabel: SKLabelNode?
@@ -109,9 +110,20 @@ class GameScene: SKScene {
             humanPlayer = savedGame.humanPlayer
             restoreFromSavedGame(savedGame)
         } else {
-            // New game - randomize player color in AI mode
+            // New game - determine who goes first based on difficulty
+            // In Gomoku, going first (black) is a significant advantage
             if gameMode == .vsAI {
-                humanPlayer = Bool.random() ? .black : .white
+                switch aiDifficulty {
+                case .easy:
+                    // Easy: player always goes first (advantage to player)
+                    humanPlayer = .black
+                case .medium:
+                    // Medium: random who goes first
+                    humanPlayer = Bool.random() ? .black : .white
+                case .hard:
+                    // Hard: AI always goes first (advantage to AI)
+                    humanPlayer = .white
+                }
             }
         }
 
@@ -536,9 +548,10 @@ class GameScene: SKScene {
 
     private func setupBoardCoordinates() {
         let letters = "ABCDEFGHJKLMNOP" // Skip 'I' as per Go convention
-        let fontSize: CGFloat = 10
-        let coordinateColor = theme.gridLineColor.skColor.withAlphaComponent(0.7)
-        let fontName = theme.id == "zen" ? "Hiragino Mincho ProN" : "AvenirNext-Medium"
+        let fontSize: CGFloat = 12
+        // Use a darker, more visible color based on board color
+        let coordinateColor = theme.boardColor.skColor.adjustedForCoordinates()
+        let fontName = theme.id == "zen" ? "Hiragino Mincho ProN" : "AvenirNext-DemiBold"
 
         // Column labels (A-O) at bottom
         for col in 0..<board.size {
@@ -552,7 +565,7 @@ class GameScene: SKScene {
             label.verticalAlignmentMode = .top
             label.position = CGPoint(
                 x: boardOffset.x + CGFloat(col) * cellSize,
-                y: boardOffset.y - 8
+                y: boardOffset.y - 10
             )
             label.zPosition = 2
             label.name = "coordinate"
@@ -570,7 +583,7 @@ class GameScene: SKScene {
             label.horizontalAlignmentMode = .right
             label.verticalAlignmentMode = .center
             label.position = CGPoint(
-                x: boardOffset.x - 8,
+                x: boardOffset.x - 10,
                 y: boardOffset.y + CGFloat(row) * cellSize
             )
             label.zPosition = 2
@@ -1015,17 +1028,29 @@ class GameScene: SKScene {
             return
         }
 
+        // Capture current state to prevent race conditions
+        let currentGeneration = gameGeneration
+        let boardCopy = GomokuBoard(copying: board)
+        let currentPlayer = board.currentPlayer
+
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
 
-            if let move = self.ai.findBestMove(board: self.board, player: self.board.currentPlayer) {
+            if let move = self.ai.findBestMove(board: boardCopy, player: currentPlayer) {
                 DispatchQueue.main.async {
+                    // Only place move if game hasn't been reset
+                    guard self.gameGeneration == currentGeneration else {
+                        return
+                    }
                     self.hideAIThinkingIndicator()
                     self.placeStone(at: move.row, col: move.col)
                     self.isAIThinking = false
                 }
             } else {
                 DispatchQueue.main.async {
+                    guard self.gameGeneration == currentGeneration else {
+                        return
+                    }
                     self.hideAIThinkingIndicator()
                     self.isAIThinking = false
                 }
@@ -1721,13 +1746,37 @@ class GameScene: SKScene {
     private func showConfirmationButtons(near position: CGPoint) {
         let buttonY = max(120, position.y - 70) // Don't go below bottom UI
         let isZenTheme = theme.id == "zen"
+        let buttonRadius: CGFloat = 26
+        let buttonSpacing: CGFloat = 45
+        let edgePadding: CGFloat = 40
+
+        // Determine button positions based on screen edges
+        var confirmX: CGFloat
+        var cancelX: CGFloat
+
+        let nearRightEdge = position.x + buttonSpacing + buttonRadius > size.width - edgePadding
+        let nearLeftEdge = position.x - buttonSpacing - buttonRadius < edgePadding
+
+        if nearRightEdge {
+            // Both buttons go to the left of the stone
+            confirmX = position.x - buttonSpacing
+            cancelX = position.x - buttonSpacing - 60  // Stack them horizontally to the left
+        } else if nearLeftEdge {
+            // Both buttons go to the right of the stone
+            cancelX = position.x + buttonSpacing
+            confirmX = position.x + buttonSpacing + 60  // Stack them horizontally to the right
+        } else {
+            // Default: confirm right, cancel left
+            confirmX = position.x + buttonSpacing
+            cancelX = position.x - buttonSpacing
+        }
 
         // Confirm button - green style
-        confirmButton = SKShapeNode(circleOfRadius: 26)
+        confirmButton = SKShapeNode(circleOfRadius: buttonRadius)
         confirmButton?.fillColor = bamboo
         confirmButton?.strokeColor = SKColor.white.withAlphaComponent(0.3)
         confirmButton?.lineWidth = 1.5
-        confirmButton?.position = CGPoint(x: position.x + 45, y: buttonY)
+        confirmButton?.position = CGPoint(x: confirmX, y: buttonY)
         confirmButton?.name = "confirmButton"
         confirmButton?.zPosition = 20
 
@@ -1753,11 +1802,11 @@ class GameScene: SKScene {
         }
 
         // Cancel button - red style
-        cancelButton = SKShapeNode(circleOfRadius: 26)
+        cancelButton = SKShapeNode(circleOfRadius: buttonRadius)
         cancelButton?.fillColor = accentRed
         cancelButton?.strokeColor = SKColor.white.withAlphaComponent(0.3)
         cancelButton?.lineWidth = 1.5
-        cancelButton?.position = CGPoint(x: position.x - 45, y: buttonY)
+        cancelButton?.position = CGPoint(x: cancelX, y: buttonY)
         cancelButton?.name = "cancelButton"
         cancelButton?.zPosition = 20
 
@@ -2973,6 +3022,9 @@ class GameScene: SKScene {
     }
 
     private func resetGame() {
+        // Increment generation to invalidate any pending AI moves
+        gameGeneration += 1
+
         // Clear saved game when starting fresh
         GameStateManager.shared.clearSavedGame()
 

@@ -23,9 +23,9 @@ enum HintPack: String, CaseIterable {
 
     var coinCost: Int {
         switch self {
-        case .small: return 25
-        case .medium: return 60
-        case .large: return 100
+        case .small: return 200
+        case .medium: return 500
+        case .large: return 900
         }
     }
 

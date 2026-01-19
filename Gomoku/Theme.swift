@@ -37,6 +37,39 @@ struct ThemeColor: Codable, Equatable {
     }
 }
 
+// MARK: - SKColor Extension
+
+extension SKColor {
+    /// Returns a contrasting color suitable for board coordinates
+    /// Darkens light colors and lightens dark colors for visibility
+    func adjustedForCoordinates() -> SKColor {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        self.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+
+        // Calculate luminance
+        let luminance = 0.299 * red + 0.587 * green + 0.114 * blue
+
+        // For light backgrounds, darken significantly; for dark, lighten
+        if luminance > 0.5 {
+            // Darken for light backgrounds
+            return SKColor(
+                red: max(0, red - 0.45),
+                green: max(0, green - 0.45),
+                blue: max(0, blue - 0.45),
+                alpha: 1.0
+            )
+        } else {
+            // Lighten for dark backgrounds
+            return SKColor(
+                red: min(1, red + 0.5),
+                green: min(1, green + 0.5),
+                blue: min(1, blue + 0.5),
+                alpha: 1.0
+            )
+        }
+    }
+}
+
 // MARK: - Gradient Colors
 
 /// Three colors for background gradient (top to bottom)
@@ -138,7 +171,7 @@ extension BoardTheme {
     static let zen = BoardTheme(
         id: "zen",
         name: "禅 · Zen",
-        price: 150,
+        price: 2000,
         // Board: Traditional kaya wood color
         boardColor: ThemeColor(red: 0.58, green: 0.48, blue: 0.32, alpha: 0.98),
         boardStrokeColor: ThemeColor(red: 0.45, green: 0.35, blue: 0.22, alpha: 0.9),
@@ -177,7 +210,7 @@ extension BoardTheme {
     static let darkMode = BoardTheme(
         id: "dark_mode",
         name: "Dark Mode",
-        price: 50,
+        price: 750,
         boardColor: ThemeColor(red: 0.18, green: 0.18, blue: 0.20, alpha: 0.98),
         boardStrokeColor: ThemeColor(red: 0.30, green: 0.30, blue: 0.32, alpha: 0.8),
         innerBoardColor: ThemeColor(red: 0.25, green: 0.25, blue: 0.28, alpha: 1.0),
@@ -211,7 +244,7 @@ extension BoardTheme {
     static let ocean = BoardTheme(
         id: "ocean",
         name: "Ocean",
-        price: 100,
+        price: 1000,
         boardColor: ThemeColor(red: 0.20, green: 0.35, blue: 0.45, alpha: 0.98),
         boardStrokeColor: ThemeColor(red: 0.15, green: 0.28, blue: 0.38, alpha: 0.8),
         innerBoardColor: ThemeColor(red: 0.30, green: 0.48, blue: 0.58, alpha: 1.0),
@@ -245,7 +278,7 @@ extension BoardTheme {
     static let marble = BoardTheme(
         id: "marble",
         name: "Marble",
-        price: 150,
+        price: 1250,
         boardColor: ThemeColor(red: 0.75, green: 0.75, blue: 0.78, alpha: 0.98),
         boardStrokeColor: ThemeColor(red: 0.60, green: 0.60, blue: 0.62, alpha: 0.8),
         innerBoardColor: ThemeColor(red: 0.92, green: 0.92, blue: 0.94, alpha: 1.0),
@@ -279,7 +312,7 @@ extension BoardTheme {
     static let sakura = BoardTheme(
         id: "sakura",
         name: "Sakura",
-        price: 150,
+        price: 1500,
         boardColor: ThemeColor(red: 0.55, green: 0.38, blue: 0.42, alpha: 0.98),
         boardStrokeColor: ThemeColor(red: 0.45, green: 0.30, blue: 0.35, alpha: 0.8),
         innerBoardColor: ThemeColor(red: 0.75, green: 0.58, blue: 0.62, alpha: 1.0),
@@ -313,7 +346,7 @@ extension BoardTheme {
     static let midnight = BoardTheme(
         id: "midnight",
         name: "Midnight",
-        price: 200,
+        price: 2500,
         boardColor: ThemeColor(red: 0.12, green: 0.10, blue: 0.18, alpha: 0.98),
         boardStrokeColor: ThemeColor(red: 0.25, green: 0.20, blue: 0.35, alpha: 0.8),
         innerBoardColor: ThemeColor(red: 0.18, green: 0.15, blue: 0.28, alpha: 1.0),
@@ -347,7 +380,7 @@ extension BoardTheme {
     static let christmas = BoardTheme(
         id: "christmas",
         name: "Christmas",
-        price: 100,
+        price: 1000,
         boardColor: ThemeColor(red: 0.18, green: 0.35, blue: 0.22, alpha: 0.98),        // Deep pine green
         boardStrokeColor: ThemeColor(red: 0.12, green: 0.25, blue: 0.15, alpha: 0.9),
         innerBoardColor: ThemeColor(red: 0.25, green: 0.45, blue: 0.30, alpha: 1.0),    // Forest green board

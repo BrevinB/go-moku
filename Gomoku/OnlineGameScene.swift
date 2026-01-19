@@ -347,7 +347,7 @@ class OnlineGameScene: SKScene {
         opponentLabel.text = "vs \(TurnBasedMatchManager.shared.opponentName)"
         opponentLabel.fontSize = 16
         opponentLabel.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.8)
-        opponentLabel.position = CGPoint(x: size.width / 2, y: size.height - 120)
+        opponentLabel.position = CGPoint(x: size.width / 2, y: size.height - 130)
         opponentLabel.zPosition = 11
         addChild(opponentLabel)
 
@@ -358,7 +358,7 @@ class OnlineGameScene: SKScene {
         colorLabel.text = colorText
         colorLabel.fontSize = 14
         colorLabel.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.6)
-        colorLabel.position = CGPoint(x: size.width / 2, y: size.height - 140)
+        colorLabel.position = CGPoint(x: size.width / 2, y: size.height - 150)
         colorLabel.zPosition = 11
         addChild(colorLabel)
 
@@ -367,7 +367,7 @@ class OnlineGameScene: SKScene {
         backButton.text = "← Menu"
         backButton.fontSize = 18
         backButton.fontColor = theme.buttonTextColor.skColor
-        backButton.position = CGPoint(x: 24, y: size.height - 165)
+        backButton.position = CGPoint(x: 24, y: size.height - 175)
         backButton.name = "backButton"
         backButton.horizontalAlignmentMode = .left
         backButton.verticalAlignmentMode = .center

@@ -306,7 +306,7 @@ class GameHistoryScene: SKScene {
         }
 
         if isDragging {
-            scrollOffset -= deltaY
+            scrollOffset += deltaY
             scrollOffset = max(0, min(scrollOffset, maxScrollOffset))
             scrollNode.position.y = scrollOffset
             lastTouchY = location.y

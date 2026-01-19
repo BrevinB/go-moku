@@ -53,20 +53,16 @@ class ShopScene: SKScene {
     private var isLoading = false
     private var loadingOverlay: SKNode?
 
-    // Layout constants
-    private var safeAreaTop: CGFloat {
-        // Account for dynamic island/notch
-        if let window = view?.window {
-            return window.safeAreaInsets.top
-        }
-        return 59 // Default for devices with dynamic island
-    }
+    // Layout constants - using fixed values like MenuScene to avoid safe area calculation issues
+    // 59 is the standard Dynamic Island safe area; this works for all modern iPhones
+    private let topInset: CGFloat = 59
     private let headerHeight: CGFloat = 140
     private let sectionSpacing: CGFloat = 30
 
     // MARK: - Scene Lifecycle
 
     override func didMove(to view: SKView) {
+        // Setup everything synchronously with fixed layout values
         setupParticleLayer()
         setupBackground()
         setupDecorations()
@@ -74,12 +70,17 @@ class ShopScene: SKScene {
         setupHeader()
         setupScrollableContent()
 
-        // Observers
-        NotificationCenter.default.addObserver(self, selector: #selector(updateCoinDisplay), name: .coinsUpdated, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(updateHintDisplay), name: .hintsUpdated, object: nil)
+        // Initialize scroll state
+        scrollVelocity = 0
+        isScrolling = false
+        scrollContainer.position.y = 0
 
         // Ambient coin sparkle
         startAmbientSparkles()
+
+        // Observers
+        NotificationCenter.default.addObserver(self, selector: #selector(updateCoinDisplay), name: .coinsUpdated, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(updateHintDisplay), name: .hintsUpdated, object: nil)
     }
 
     override func willMove(from view: SKView) {
@@ -215,7 +216,7 @@ class ShopScene: SKScene {
         addChild(headerNode)
 
         // Header background to cover scroll content
-        let headerBg = SKShapeNode(rect: CGRect(x: 0, y: size.height - safeAreaTop - headerHeight, width: size.width, height: safeAreaTop + headerHeight))
+        let headerBg = SKShapeNode(rect: CGRect(x: 0, y: size.height - topInset - headerHeight, width: size.width, height: topInset + headerHeight))
         headerBg.fillColor = theme.backgroundGradient.topColor.skColor
         headerBg.strokeColor = .clear
         headerBg.zPosition = 99
@@ -223,7 +224,7 @@ class ShopScene: SKScene {
 
         // Back button - positioned below safe area
         let backContainer = SKNode()
-        backContainer.position = CGPoint(x: 50, y: size.height - safeAreaTop - 35)
+        backContainer.position = CGPoint(x: 50, y: size.height - topInset - 35)
         backContainer.name = "backButton"
         backContainer.zPosition = 101
         headerNode.addChild(backContainer)
@@ -245,7 +246,7 @@ class ShopScene: SKScene {
 
         // Title
         let titleContainer = SKNode()
-        titleContainer.position = CGPoint(x: size.width / 2, y: size.height - safeAreaTop - 35)
+        titleContainer.position = CGPoint(x: size.width / 2, y: size.height - topInset - 35)
         titleContainer.zPosition = 101
         headerNode.addChild(titleContainer)
 
@@ -259,7 +260,7 @@ class ShopScene: SKScene {
         let line = SKShapeNode(rectOf: CGSize(width: 50, height: 3), cornerRadius: 1.5)
         line.fillColor = gold
         line.strokeColor = .clear
-        line.position = CGPoint(x: size.width / 2, y: size.height - safeAreaTop - 60)
+        line.position = CGPoint(x: size.width / 2, y: size.height - topInset - 60)
         line.zPosition = 101
         headerNode.addChild(line)
 
@@ -270,7 +271,7 @@ class ShopScene: SKScene {
     private func setupCurrencyDisplays() {
         // Coin display
         coinDisplayContainer = SKNode()
-        coinDisplayContainer.position = CGPoint(x: size.width / 2 - 55, y: size.height - safeAreaTop - 100)
+        coinDisplayContainer.position = CGPoint(x: size.width / 2 - 55, y: size.height - topInset - 100)
         coinDisplayContainer.zPosition = 101
         headerNode.addChild(coinDisplayContainer)
 
@@ -302,7 +303,7 @@ class ShopScene: SKScene {
 
         // Hint display
         hintDisplayContainer = SKNode()
-        hintDisplayContainer.position = CGPoint(x: size.width / 2 + 55, y: size.height - safeAreaTop - 100)
+        hintDisplayContainer.position = CGPoint(x: size.width / 2 + 55, y: size.height - topInset - 100)
         hintDisplayContainer.zPosition = 101
         headerNode.addChild(hintDisplayContainer)
 
@@ -407,7 +408,7 @@ class ShopScene: SKScene {
     // MARK: - Scrollable Content
 
     private func setupScrollableContent() {
-        let visibleTop = size.height - safeAreaTop - headerHeight - 20
+        let visibleTop = size.height - topInset - headerHeight - 20
         var currentY: CGFloat = visibleTop
 
         // Coin Packs Section
@@ -1011,15 +1012,6 @@ class ShopScene: SKScene {
         lastTouchY = location.y
         scrollVelocity = 0
         isScrolling = false
-
-        let nodes = self.nodes(at: location)
-        for node in nodes {
-            if let name = node.name {
-                if let container = findTouchableContainer(node, withPrefix: name) {
-                    container.run(SKAction.scale(to: 0.95, duration: 0.1))
-                }
-            }
-        }
     }
 
     override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -1028,9 +1020,8 @@ class ShopScene: SKScene {
 
         let deltaY = location.y - lastTouchY
 
-        if abs(deltaY) > 5 {
+        if abs(deltaY) > 8 {
             isScrolling = true
-            resetAllScales()
         }
 
         if isScrolling {
@@ -1045,12 +1036,9 @@ class ShopScene: SKScene {
         guard let touch = touches.first else { return }
         let location = touch.location(in: self)
 
-        resetAllScales()
-
         if !isScrolling {
             handleTap(at: location)
         } else {
-            // Apply momentum scrolling
             applyScrollMomentum()
         }
 
@@ -1058,7 +1046,6 @@ class ShopScene: SKScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        resetAllScales()
         isScrolling = false
     }
 
@@ -1067,7 +1054,7 @@ class ShopScene: SKScene {
 
         // Calculate bounds
         let minY: CGFloat = 0
-        let maxY = max(0, scrollContentHeight - (size.height - safeAreaTop - headerHeight - 100))
+        let maxY = max(0, scrollContentHeight - (size.height - topInset - headerHeight - 100))
 
         // Apply with rubber banding at edges
         if newY < minY {
@@ -1081,7 +1068,7 @@ class ShopScene: SKScene {
 
     private func applyScrollMomentum() {
         let minY: CGFloat = 0
-        let maxY = max(0, scrollContentHeight - (size.height - safeAreaTop - headerHeight - 100))
+        let maxY = max(0, scrollContentHeight - (size.height - topInset - headerHeight - 100))
 
         // Bounce back if out of bounds
         if scrollContainer.position.y < minY {
@@ -1143,18 +1130,6 @@ class ShopScene: SKScene {
         }
     }
 
-    private func findTouchableContainer(_ node: SKNode, withPrefix prefix: String) -> SKNode? {
-        if node.name == prefix { return node.parent ?? node }
-        if node.parent?.name == prefix { return node.parent }
-        return nil
-    }
-
-    private func resetAllScales() {
-        for node in coinPackNodes + hintPackNodes + themeNodes {
-            node.run(SKAction.scale(to: 1.0, duration: 0.1))
-        }
-    }
-
     // MARK: - Purchases
 
     private func purchaseCoinPack(_ pack: CoinPack) {
@@ -1191,8 +1166,8 @@ class ShopScene: SKScene {
         if ThemeManager.shared.isUnlocked(boardTheme) {
             if ThemeManager.shared.currentTheme.id != boardTheme.id {
                 ThemeManager.shared.applyTheme(boardTheme)
-                refreshThemeCards()
-                showThemeApplied(boardTheme.name)
+                // Reload entire scene to apply new theme colors everywhere
+                reloadSceneWithNewTheme(showingToast: "\(boardTheme.name) Applied!")
             }
         } else if ThemeManager.shared.canAfford(boardTheme) {
             showThemePurchaseConfirmation(for: boardTheme)
@@ -1234,8 +1209,8 @@ class ShopScene: SKScene {
         alert.addAction(UIAlertAction(title: isZenTheme ? "購入" : "Purchase", style: .default) { [weak self] _ in
             if ThemeManager.shared.purchaseTheme(boardTheme) {
                 ThemeManager.shared.applyTheme(boardTheme)
-                self?.refreshThemeCards()
-                self?.showThemeUnlockCelebration(boardTheme.name)
+                // Reload entire scene to apply new theme colors everywhere
+                self?.reloadSceneWithNewTheme(showingToast: "\(boardTheme.name) Unlocked!", celebration: true)
             }
         })
         vc.present(alert, animated: true)
@@ -1474,7 +1449,7 @@ class ShopScene: SKScene {
         hintPackNodes.removeAll()
 
         // Recalculate position based on current scroll content
-        let visibleTop = size.height - safeAreaTop - headerHeight - 20
+        let visibleTop = size.height - topInset - headerHeight - 20
         let coinPackHeight: CGFloat = 165 // header + cards
         let sectionY = visibleTop - coinPackHeight - sectionSpacing - 35
 
@@ -1501,7 +1476,7 @@ class ShopScene: SKScene {
         }
         themeNodes.removeAll()
 
-        let visibleTop = size.height - safeAreaTop - headerHeight - 20
+        let visibleTop = size.height - topInset - headerHeight - 20
         let coinPackHeight: CGFloat = 165
         let hintPackHeight: CGFloat = 150
         let sectionY = visibleTop - coinPackHeight - sectionSpacing - hintPackHeight - sectionSpacing - 35
@@ -1516,5 +1491,24 @@ class ShopScene: SKScene {
         let menuScene = MenuScene(size: size)
         menuScene.scaleMode = .aspectFill
         view?.presentScene(menuScene, transition: transition)
+    }
+
+    private func reloadSceneWithNewTheme(showingToast text: String, celebration: Bool = false) {
+        // Create a new shop scene with the new theme applied
+        let newShopScene = ShopScene(size: size)
+        newShopScene.scaleMode = .aspectFill
+
+        // Quick crossfade transition
+        let transition = SKTransition.crossFade(withDuration: 0.3)
+        view?.presentScene(newShopScene, transition: transition)
+
+        // Show toast and celebration after transition
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            if celebration {
+                newShopScene.showThemeUnlockCelebration(text.replacingOccurrences(of: " Unlocked!", with: ""))
+            } else {
+                newShopScene.showSuccessToast(text: text, color: newShopScene.selectedBlue)
+            }
+        }
     }
 }
