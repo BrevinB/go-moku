@@ -66,6 +66,7 @@ class OnlineGameScene: SKScene {
     }
 
     override func didMove(to view: SKView) {
+        initializeFontScaling()
         let gradientLayer = createGradientBackground()
         addChild(gradientLayer)
 
@@ -334,7 +335,7 @@ class OnlineGameScene: SKScene {
         }
 
         statusLabel = SKLabelNode(fontNamed: "SF Pro Rounded")
-        statusLabel.fontSize = 28
+        statusLabel.fontSize = scaledFontSize(28)
         statusLabel.position = CGPoint(x: size.width / 2, y: size.height - 80)
         statusLabel.fontColor = theme.statusTextColor.skColor
         statusLabel.verticalAlignmentMode = .center
@@ -345,7 +346,7 @@ class OnlineGameScene: SKScene {
         // Opponent name label using theme colors
         opponentLabel = SKLabelNode(fontNamed: "SF Pro Rounded")
         opponentLabel.text = "vs \(TurnBasedMatchManager.shared.opponentName)"
-        opponentLabel.fontSize = 16
+        opponentLabel.fontSize = fontSize(.headline)
         opponentLabel.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.8)
         opponentLabel.position = CGPoint(x: size.width / 2, y: size.height - 130)
         opponentLabel.zPosition = 11
@@ -356,7 +357,7 @@ class OnlineGameScene: SKScene {
         let colorText = localColor == .black ? "You are Black" : "You are White"
         let colorLabel = SKLabelNode(fontNamed: "SF Pro Rounded")
         colorLabel.text = colorText
-        colorLabel.fontSize = 14
+        colorLabel.fontSize = fontSize(.callout)
         colorLabel.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.6)
         colorLabel.position = CGPoint(x: size.width / 2, y: size.height - 150)
         colorLabel.zPosition = 11
@@ -365,7 +366,7 @@ class OnlineGameScene: SKScene {
         // Back button using theme colors
         backButton = SKLabelNode(fontNamed: "SF Pro Rounded")
         backButton.text = "← Menu"
-        backButton.fontSize = 18
+        backButton.fontSize = fontSize(.headline)
         backButton.fontColor = theme.buttonTextColor.skColor
         backButton.position = CGPoint(x: 24, y: size.height - 175)
         backButton.name = "backButton"
@@ -394,7 +395,7 @@ class OnlineGameScene: SKScene {
 
         resignButton = SKLabelNode(fontNamed: "SF Pro Rounded")
         resignButton.text = "Resign"
-        resignButton.fontSize = 22
+        resignButton.fontSize = fontSize(.title)
         resignButton.fontColor = SKColor(red: 0.98, green: 0.97, blue: 0.95, alpha: 1.0)
         resignButton.position = CGPoint(x: size.width / 2, y: 45)
         resignButton.name = "resignButton"
@@ -727,7 +728,7 @@ class OnlineGameScene: SKScene {
 
         let label = SKLabelNode(fontNamed: "SF Pro Rounded")
         label.text = "Waiting for opponent..."
-        label.fontSize = 14
+        label.fontSize = fontSize(.callout)
         label.fontColor = SKColor(red: 0.45, green: 0.38, blue: 0.30, alpha: 1.0)
         label.position = CGPoint(x: 0, y: -20)
         label.verticalAlignmentMode = .center
@@ -889,7 +890,7 @@ class OnlineGameScene: SKScene {
 
         shareButton = SKLabelNode(fontNamed: "SF Pro Rounded")
         shareButton?.text = "Share"
-        shareButton?.fontSize = 22
+        shareButton?.fontSize = fontSize(.title)
         shareButton?.fontColor = SKColor(red: 0.98, green: 0.97, blue: 0.95, alpha: 1.0)
         shareButton?.position = CGPoint(x: size.width / 2, y: 45)
         shareButton?.name = "shareButton"
@@ -1113,13 +1114,13 @@ class OnlineGameScene: SKScene {
 
         let icon = SKLabelNode(fontNamed: "SF Pro Rounded")
         icon.text = "⚠️"
-        icon.fontSize = 16
+        icon.fontSize = fontSize(.headline)
         icon.position = CGPoint(x: size.width / 2 - 70, y: size.height - 28)
         banner.addChild(icon)
 
         let label = SKLabelNode(fontNamed: "SF Pro Rounded")
         label.text = "No Internet Connection"
-        label.fontSize = 14
+        label.fontSize = fontSize(.callout)
         label.fontColor = .white
         label.position = CGPoint(x: size.width / 2, y: size.height - 28)
         banner.addChild(label)
@@ -1237,7 +1238,7 @@ class OnlineGameScene: SKScene {
         // Title
         let titleLabel = SKLabelNode(fontNamed: "SF Pro Rounded")
         titleLabel.text = title
-        titleLabel.fontSize = 20
+        titleLabel.fontSize = fontSize(.title2)
         titleLabel.fontColor = theme.statusTextColor.skColor
         titleLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 + 50)
         overlay.addChild(titleLabel)
@@ -1245,7 +1246,7 @@ class OnlineGameScene: SKScene {
         // Message
         let messageLabel = SKLabelNode(fontNamed: "SF Pro Rounded")
         messageLabel.text = message
-        messageLabel.fontSize = 14
+        messageLabel.fontSize = fontSize(.callout)
         messageLabel.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.8)
         messageLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 + 15)
         messageLabel.numberOfLines = 2
@@ -1262,7 +1263,7 @@ class OnlineGameScene: SKScene {
 
         let menuLabel = SKLabelNode(fontNamed: "SF Pro Rounded")
         menuLabel.text = "Back to Menu"
-        menuLabel.fontSize = 16
+        menuLabel.fontSize = fontSize(.headline)
         menuLabel.fontColor = .white
         menuLabel.verticalAlignmentMode = .center
         menuLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 45)
@@ -1518,7 +1519,7 @@ class OnlineGameScene: SKScene {
 
         confirmButtonLabel = SKLabelNode(fontNamed: isZenTheme ? "Hiragino Mincho ProN" : "AvenirNext-Bold")
         confirmButtonLabel?.text = isZenTheme ? "決" : "✓"
-        confirmButtonLabel?.fontSize = isZenTheme ? 20 : 24
+        confirmButtonLabel?.fontSize = isZenTheme ? fontSize(.title2) : fontSize(.title)
         confirmButtonLabel?.fontColor = .white
         confirmButtonLabel?.verticalAlignmentMode = .center
         confirmButtonLabel?.horizontalAlignmentMode = .center
@@ -1541,7 +1542,7 @@ class OnlineGameScene: SKScene {
 
         cancelButtonLabel = SKLabelNode(fontNamed: isZenTheme ? "Hiragino Mincho ProN" : "AvenirNext-Bold")
         cancelButtonLabel?.text = isZenTheme ? "消" : "✕"
-        cancelButtonLabel?.fontSize = isZenTheme ? 20 : 24
+        cancelButtonLabel?.fontSize = isZenTheme ? fontSize(.title2) : fontSize(.title)
         cancelButtonLabel?.fontColor = .white
         cancelButtonLabel?.verticalAlignmentMode = .center
         cancelButtonLabel?.horizontalAlignmentMode = .center
