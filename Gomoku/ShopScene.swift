@@ -421,6 +421,10 @@ class ShopScene: SKScene {
 
         // Themes Section
         currentY = setupThemeSection(at: currentY)
+        currentY -= sectionSpacing
+
+        // Legal Links Section
+        currentY = setupLegalSection(at: currentY)
         currentY -= 50 // Bottom padding
 
         scrollContentHeight = visibleTop - currentY
@@ -975,6 +979,60 @@ class ShopScene: SKScene {
         return brightness > 0.5 ? primaryTextColor : theme.backgroundGradient.topColor.skColor
     }
 
+    // MARK: - Legal Section
+
+    private func setupLegalSection(at startY: CGFloat) -> CGFloat {
+        var currentY = startY
+
+        // Divider line
+        let divider = SKShapeNode(rectOf: CGSize(width: size.width - 80, height: 1))
+        divider.fillColor = secondaryTextColor.withAlphaComponent(0.2)
+        divider.strokeColor = .clear
+        divider.position = CGPoint(x: size.width / 2, y: currentY)
+        scrollContainer.addChild(divider)
+        currentY -= 25
+
+        // Legal links container
+        let linksContainer = SKNode()
+        linksContainer.position = CGPoint(x: size.width / 2, y: currentY)
+        scrollContainer.addChild(linksContainer)
+
+        // Privacy Policy link
+        let privacyLabel = SKLabelNode(fontNamed: uiFont)
+        privacyLabel.text = isZenTheme ? "プライバシーポリシー" : "Privacy Policy"
+        privacyLabel.fontSize = 13
+        privacyLabel.fontColor = secondaryTextColor
+        privacyLabel.name = "privacyPolicy"
+        privacyLabel.position = CGPoint(x: -60, y: 0)
+        linksContainer.addChild(privacyLabel)
+
+        // Separator dot
+        let dot = SKLabelNode(fontNamed: uiFont)
+        dot.text = "•"
+        dot.fontSize = 13
+        dot.fontColor = secondaryTextColor.withAlphaComponent(0.5)
+        dot.position = CGPoint(x: 0, y: 0)
+        linksContainer.addChild(dot)
+
+        // Terms of Service link
+        let termsLabel = SKLabelNode(fontNamed: uiFont)
+        termsLabel.text = isZenTheme ? "利用規約" : "Terms of Service"
+        termsLabel.fontSize = 13
+        termsLabel.fontColor = secondaryTextColor
+        termsLabel.name = "termsOfService"
+        termsLabel.position = CGPoint(x: 60, y: 0)
+        linksContainer.addChild(termsLabel)
+
+        currentY -= 30
+
+        return currentY
+    }
+
+    private func openURL(_ urlString: String) {
+        guard let url = URL(string: urlString) else { return }
+        UIApplication.shared.open(url)
+    }
+
     // MARK: - Display Updates
 
     @objc private func updateCoinDisplay() {
@@ -1126,6 +1184,18 @@ class ShopScene: SKScene {
                     handleThemeTap(boardTheme)
                     return
                 }
+            }
+
+            if name == "privacyPolicy" {
+                SoundManager.shared.buttonTapped()
+                openURL("https://brevinb.github.io/go-moku-legal/privacy-policy.html")
+                return
+            }
+
+            if name == "termsOfService" {
+                SoundManager.shared.buttonTapped()
+                openURL("https://brevinb.github.io/go-moku-legal/terms-of-service.html")
+                return
             }
         }
     }

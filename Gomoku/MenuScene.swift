@@ -547,7 +547,7 @@ class MenuScene: SKScene {
             titleLabel.text = "五目並べ"
             titleLabel.fontSize = 44
         } else {
-            titleLabel.text = "GOMOKU"
+            titleLabel.text = "go!moku"
             titleLabel.fontSize = 52
         }
         titleLabel.fontColor = theme.statusTextColor.skColor
