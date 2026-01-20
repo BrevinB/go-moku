@@ -62,6 +62,8 @@ class ShopScene: SKScene {
     // MARK: - Scene Lifecycle
 
     override func didMove(to view: SKView) {
+        initializeFontScaling()
+
         // Setup everything synchronously with fixed layout values
         setupParticleLayer()
         setupBackground()
@@ -238,7 +240,7 @@ class ShopScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "← 戻る" : "← Back"
-        label.fontSize = 14
+        label.fontSize = fontSize(.callout)
         label.fontColor = theme.buttonTextColor.skColor
         label.verticalAlignmentMode = .center
         label.name = "backButton"
@@ -252,7 +254,7 @@ class ShopScene: SKScene {
 
         let titleLabel = SKLabelNode(fontNamed: uiFontBold)
         titleLabel.text = isZenTheme ? "商店" : "Shop"
-        titleLabel.fontSize = 28
+        titleLabel.fontSize = scaledFontSize(28)
         titleLabel.fontColor = primaryTextColor
         titleContainer.addChild(titleLabel)
 
@@ -294,7 +296,7 @@ class ShopScene: SKScene {
 
         coinLabel = SKLabelNode(fontNamed: uiFontBold)
         coinLabel.text = "\(CoinManager.shared.balance)"
-        coinLabel.fontSize = 16
+        coinLabel.fontSize = fontSize(.headline)
         coinLabel.fontColor = goldDark
         coinLabel.verticalAlignmentMode = .center
         coinLabel.horizontalAlignmentMode = .left
@@ -321,14 +323,14 @@ class ShopScene: SKScene {
         hintDisplayContainer.addChild(hintShadow)
 
         let hintIcon = SKLabelNode(text: "💡")
-        hintIcon.fontSize = 20
+        hintIcon.fontSize = fontSize(.title2)
         hintIcon.verticalAlignmentMode = .center
         hintIcon.position = CGPoint(x: -30, y: 0)
         hintDisplayContainer.addChild(hintIcon)
 
         hintLabel = SKLabelNode(fontNamed: uiFontBold)
         hintLabel.text = "\(HintManager.shared.balance)"
-        hintLabel.fontSize = 16
+        hintLabel.fontSize = fontSize(.headline)
         hintLabel.fontColor = purchaseGreenDark
         hintLabel.verticalAlignmentMode = .center
         hintLabel.horizontalAlignmentMode = .left
@@ -515,13 +517,13 @@ class ShopScene: SKScene {
         container.position = position
 
         let iconLabel = SKLabelNode(text: icon)
-        iconLabel.fontSize = 20
+        iconLabel.fontSize = fontSize(.title2)
         iconLabel.position = CGPoint(x: -50, y: -5)
         container.addChild(iconLabel)
 
         let titleLabel = SKLabelNode(fontNamed: uiFontBold)
         titleLabel.text = title
-        titleLabel.fontSize = 18
+        titleLabel.fontSize = fontSize(.headline)
         titleLabel.fontColor = primaryTextColor
         titleLabel.horizontalAlignmentMode = .left
         titleLabel.position = CGPoint(x: -30, y: 0)
@@ -530,7 +532,7 @@ class ShopScene: SKScene {
         if let subtitle = subtitle {
             let subtitleLabel = SKLabelNode(fontNamed: uiFont)
             subtitleLabel.text = subtitle
-            subtitleLabel.fontSize = 12
+            subtitleLabel.fontSize = fontSize(.footnote)
             subtitleLabel.fontColor = secondaryTextColor
             subtitleLabel.horizontalAlignmentMode = .left
             subtitleLabel.position = CGPoint(x: -30, y: -18)
@@ -589,7 +591,7 @@ class ShopScene: SKScene {
 
             let badgeLabel = SKLabelNode(fontNamed: uiFontBold)
             badgeLabel.text = badgeText
-            badgeLabel.fontSize = 8
+            badgeLabel.fontSize = fontSize(.caption2)
             badgeLabel.fontColor = .white
             badgeLabel.verticalAlignmentMode = .center
             badgeLabel.position = CGPoint(x: cardSize.width / 2 - 22, y: cardSize.height / 2 - 14)
@@ -600,7 +602,7 @@ class ShopScene: SKScene {
         // Amount label
         let amountLabel = SKLabelNode(fontNamed: uiFontBold)
         amountLabel.text = "\(pack.coinAmount)"
-        amountLabel.fontSize = 20
+        amountLabel.fontSize = fontSize(.title2)
         amountLabel.fontColor = goldDark
         amountLabel.position = CGPoint(x: 0, y: -12)
         amountLabel.verticalAlignmentMode = .center
@@ -608,7 +610,7 @@ class ShopScene: SKScene {
 
         let coinsText = SKLabelNode(fontNamed: uiFont)
         coinsText.text = "coins"
-        coinsText.fontSize = 10
+        coinsText.fontSize = fontSize(.caption)
         coinsText.fontColor = secondaryTextColor
         coinsText.position = CGPoint(x: 0, y: -28)
         container.addChild(coinsText)
@@ -624,7 +626,7 @@ class ShopScene: SKScene {
 
         let priceLabel = SKLabelNode(fontNamed: uiFontBold)
         priceLabel.text = StoreManager.shared.getLocalizedPrice(for: pack)
-        priceLabel.fontSize = 12
+        priceLabel.fontSize = fontSize(.footnote)
         priceLabel.fontColor = .white
         priceLabel.position = CGPoint(x: 0, y: -50)
         priceLabel.verticalAlignmentMode = .center
@@ -736,7 +738,7 @@ class ShopScene: SKScene {
         }
 
         let bulb = SKLabelNode(text: "💡")
-        bulb.fontSize = 30
+        bulb.fontSize = scaledFontSize(30)
         bulb.alpha = canAfford ? 1.0 : 0.5
         bulbContainer.addChild(bulb)
 
@@ -751,7 +753,7 @@ class ShopScene: SKScene {
 
             let badgeLabel = SKLabelNode(fontNamed: uiFontBold)
             badgeLabel.text = pack.savingsText!
-            badgeLabel.fontSize = 8
+            badgeLabel.fontSize = fontSize(.caption2)
             badgeLabel.fontColor = .white
             badgeLabel.verticalAlignmentMode = .center
             badgeLabel.position = CGPoint(x: cardSize.width / 2 - 28, y: cardSize.height / 2 - 14)
@@ -762,7 +764,7 @@ class ShopScene: SKScene {
         // Amount
         let amountLabel = SKLabelNode(fontNamed: uiFontBold)
         amountLabel.text = "\(pack.hintCount) Hints"
-        amountLabel.fontSize = 13
+        amountLabel.fontSize = fontSize(.subheadline)
         amountLabel.fontColor = canAfford ? primaryTextColor : secondaryTextColor
         amountLabel.position = CGPoint(x: 0, y: -10)
         container.addChild(amountLabel)
@@ -788,7 +790,7 @@ class ShopScene: SKScene {
 
         let priceLabel = SKLabelNode(fontNamed: uiFontBold)
         priceLabel.text = "\(pack.coinCost)"
-        priceLabel.fontSize = 11
+        priceLabel.fontSize = fontSize(.caption)
         priceLabel.fontColor = canAfford ? .white : .white.withAlphaComponent(0.8)
         priceLabel.verticalAlignmentMode = .center
         priceLabel.position = CGPoint(x: 4, y: 0)
@@ -912,7 +914,7 @@ class ShopScene: SKScene {
         let textColor = getContrastingTextColor(for: boardTheme.innerBoardColor.skColor)
         let nameLabel = SKLabelNode(fontNamed: uiFontBold)
         nameLabel.text = boardTheme.name
-        nameLabel.fontSize = 12
+        nameLabel.fontSize = fontSize(.footnote)
         nameLabel.fontColor = textColor
         nameLabel.position = CGPoint(x: 0, y: -20)
         container.addChild(nameLabel)
@@ -928,7 +930,7 @@ class ShopScene: SKScene {
 
                 let checkLabel = SKLabelNode(fontNamed: uiFont)
                 checkLabel.text = isZenTheme ? "✓ 選択中" : "✓ Active"
-                checkLabel.fontSize = 10
+                checkLabel.fontSize = fontSize(.caption)
                 checkLabel.fontColor = .white
                 checkLabel.verticalAlignmentMode = .center
                 checkLabel.position = CGPoint(x: 0, y: -38)
@@ -953,7 +955,7 @@ class ShopScene: SKScene {
 
             let priceLabel = SKLabelNode(fontNamed: uiFontBold)
             priceLabel.text = "\(boardTheme.price)"
-            priceLabel.fontSize = 10
+            priceLabel.fontSize = fontSize(.caption)
             priceLabel.fontColor = canAfford ? .white : .white.withAlphaComponent(0.8)
             priceLabel.verticalAlignmentMode = .center
             priceLabel.position = CGPoint(x: canAfford ? 4 : 0, y: -38)
@@ -1000,7 +1002,7 @@ class ShopScene: SKScene {
         // Privacy Policy link
         let privacyLabel = SKLabelNode(fontNamed: uiFont)
         privacyLabel.text = isZenTheme ? "プライバシーポリシー" : "Privacy Policy"
-        privacyLabel.fontSize = 13
+        privacyLabel.fontSize = fontSize(.subheadline)
         privacyLabel.fontColor = secondaryTextColor
         privacyLabel.name = "privacyPolicy"
         privacyLabel.position = CGPoint(x: -60, y: 0)
@@ -1009,7 +1011,7 @@ class ShopScene: SKScene {
         // Separator dot
         let dot = SKLabelNode(fontNamed: uiFont)
         dot.text = "•"
-        dot.fontSize = 13
+        dot.fontSize = fontSize(.subheadline)
         dot.fontColor = secondaryTextColor.withAlphaComponent(0.5)
         dot.position = CGPoint(x: 0, y: 0)
         linksContainer.addChild(dot)
@@ -1017,7 +1019,7 @@ class ShopScene: SKScene {
         // Terms of Service link
         let termsLabel = SKLabelNode(fontNamed: uiFont)
         termsLabel.text = isZenTheme ? "利用規約" : "Terms of Service"
-        termsLabel.fontSize = 13
+        termsLabel.fontSize = fontSize(.subheadline)
         termsLabel.fontColor = secondaryTextColor
         termsLabel.name = "termsOfService"
         termsLabel.position = CGPoint(x: 60, y: 0)
@@ -1429,7 +1431,7 @@ class ShopScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFontBold)
         label.text = text
-        label.fontSize = 18
+        label.fontSize = fontSize(.headline)
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         toast.addChild(label)
@@ -1489,7 +1491,7 @@ class ShopScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "処理中..." : "Processing..."
-        label.fontSize = 13
+        label.fontSize = fontSize(.subheadline)
         label.fontColor = primaryTextColor
         label.position = CGPoint(x: size.width / 2, y: size.height / 2 - 30)
         overlay.addChild(label)

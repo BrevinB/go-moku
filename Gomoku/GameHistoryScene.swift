@@ -30,6 +30,7 @@ class GameHistoryScene: SKScene {
     private var gameCards: [(id: UUID, node: SKNode)] = []
 
     override func didMove(to view: SKView) {
+        initializeFontScaling()
         setupBackground()
         setupDecorations()
         setupHeader()
@@ -89,7 +90,7 @@ class GameHistoryScene: SKScene {
     private func setupHeader() {
         let titleLabel = SKLabelNode(fontNamed: uiFont)
         titleLabel.text = isZenTheme ? "対戦履歴" : "Game History"
-        titleLabel.fontSize = 32
+        titleLabel.fontSize = fontSize(.largeTitle)
         titleLabel.fontColor = primaryTextColor
         titleLabel.position = CGPoint(x: size.width / 2, y: size.height - 90)
         titleLabel.zPosition = 10
@@ -98,7 +99,7 @@ class GameHistoryScene: SKScene {
         if isZenTheme {
             let subtitle = SKLabelNode(fontNamed: uiFont)
             subtitle.text = "Game History"
-            subtitle.fontSize = 14
+            subtitle.fontSize = fontSize(.callout)
             subtitle.fontColor = secondaryTextColor
             subtitle.position = CGPoint(x: size.width / 2, y: size.height - 115)
             subtitle.zPosition = 10
@@ -187,7 +188,7 @@ class GameHistoryScene: SKScene {
         // Mode label
         let modeLabel = SKLabelNode(fontNamed: uiFont)
         modeLabel.text = game.modeDescription
-        modeLabel.fontSize = 16
+        modeLabel.fontSize = fontSize(.headline)
         modeLabel.fontColor = primaryTextColor
         modeLabel.horizontalAlignmentMode = .left
         modeLabel.position = CGPoint(x: -cardWidth/2 + 28, y: 25)
@@ -201,7 +202,7 @@ class GameHistoryScene: SKScene {
         } else {
             resultLabel.text = game.resultDescription
         }
-        resultLabel.fontSize = 13
+        resultLabel.fontSize = fontSize(.subheadline)
         resultLabel.fontColor = secondaryTextColor
         resultLabel.horizontalAlignmentMode = .left
         resultLabel.position = CGPoint(x: -cardWidth/2 + 28, y: 4)
@@ -211,7 +212,7 @@ class GameHistoryScene: SKScene {
         // Move count
         let movesLabel = SKLabelNode(fontNamed: uiFont)
         movesLabel.text = isZenTheme ? "\(game.moveCount) moves · \(game.moveCount)手" : "\(game.moveCount) moves"
-        movesLabel.fontSize = 12
+        movesLabel.fontSize = fontSize(.footnote)
         movesLabel.fontColor = secondaryTextColor
         movesLabel.horizontalAlignmentMode = .left
         movesLabel.position = CGPoint(x: -cardWidth/2 + 28, y: -15)
@@ -221,7 +222,7 @@ class GameHistoryScene: SKScene {
         // Date label
         let dateLabel = SKLabelNode(fontNamed: uiFont)
         dateLabel.text = game.dateDescription
-        dateLabel.fontSize = 11
+        dateLabel.fontSize = fontSize(.caption)
         dateLabel.fontColor = secondaryTextColor.withAlphaComponent(0.7)
         dateLabel.horizontalAlignmentMode = .left
         dateLabel.position = CGPoint(x: -cardWidth/2 + 28, y: -32)
@@ -239,7 +240,7 @@ class GameHistoryScene: SKScene {
 
         let playIcon = SKLabelNode(fontNamed: "AvenirNext-Bold")
         playIcon.text = "▶"
-        playIcon.fontSize = 18
+        playIcon.fontSize = fontSize(.headline)
         playIcon.fontColor = accentColor
         playIcon.verticalAlignmentMode = .center
         playIcon.horizontalAlignmentMode = .center
@@ -266,7 +267,7 @@ class GameHistoryScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "← Back · 戻る" : "← Back"
-        label.fontSize = 16
+        label.fontSize = fontSize(.headline)
         label.fontColor = primaryTextColor
         label.verticalAlignmentMode = .center
         label.name = "backButton"

@@ -33,6 +33,7 @@ class SettingsScene: SKScene {
     private var isDragging = false
 
     override func didMove(to view: SKView) {
+        initializeFontScaling()
         setupBackground()
         setupDecorations()
         setupHeader()
@@ -146,7 +147,7 @@ class SettingsScene: SKScene {
         // Title
         let titleLabel = SKLabelNode(fontNamed: uiFont)
         titleLabel.text = isZenTheme ? "設定" : "Settings"
-        titleLabel.fontSize = 36
+        titleLabel.fontSize = fontSize(.largeTitle)
         titleLabel.fontColor = primaryTextColor
         titleLabel.position = CGPoint(x: size.width / 2, y: size.height - 100)
         titleLabel.zPosition = 20
@@ -156,7 +157,7 @@ class SettingsScene: SKScene {
         if isZenTheme {
             let subtitle = SKLabelNode(fontNamed: uiFont)
             subtitle.text = "Settings"
-            subtitle.fontSize = 16
+            subtitle.fontSize = fontSize(.headline)
             subtitle.fontColor = secondaryTextColor
             subtitle.position = CGPoint(x: size.width / 2, y: size.height - 130)
             subtitle.zPosition = 20
@@ -218,7 +219,7 @@ class SettingsScene: SKScene {
         // Accessibility section header
         let accessibilityLabel = SKLabelNode(fontNamed: uiFont)
         accessibilityLabel.text = isZenTheme ? "アクセシビリティ" : "Accessibility"
-        accessibilityLabel.fontSize = 14
+        accessibilityLabel.fontSize = fontSize(.callout)
         accessibilityLabel.fontColor = secondaryTextColor
         accessibilityLabel.position = CGPoint(x: size.width / 2, y: currentY)
         scrollNode.addChild(accessibilityLabel)
@@ -226,7 +227,7 @@ class SettingsScene: SKScene {
         if isZenTheme {
             let accessibilitySubtitle = SKLabelNode(fontNamed: uiFont)
             accessibilitySubtitle.text = "Accessibility"
-            accessibilitySubtitle.fontSize = 10
+            accessibilitySubtitle.fontSize = fontSize(.caption)
             accessibilitySubtitle.fontColor = secondaryTextColor.withAlphaComponent(0.7)
             accessibilitySubtitle.position = CGPoint(x: size.width / 2, y: currentY - 15)
             scrollNode.addChild(accessibilitySubtitle)
@@ -294,7 +295,7 @@ class SettingsScene: SKScene {
         // Debug section header
         let debugLabel = SKLabelNode(fontNamed: uiFont)
         debugLabel.text = isZenTheme ? "開発者設定 · Debug" : "Debug Settings"
-        debugLabel.fontSize = 16
+        debugLabel.fontSize = fontSize(.headline)
         debugLabel.fontColor = dangerColor
         debugLabel.position = CGPoint(x: size.width / 2, y: yPosition)
         scrollNode.addChild(debugLabel)
@@ -302,7 +303,7 @@ class SettingsScene: SKScene {
         // Coin balance display
         let balanceLabel = SKLabelNode(fontNamed: uiFont)
         balanceLabel.text = isZenTheme ? "所持コイン: \(CoinManager.shared.balance)" : "Balance: \(CoinManager.shared.balance) coins"
-        balanceLabel.fontSize = 14
+        balanceLabel.fontSize = fontSize(.callout)
         balanceLabel.fontColor = secondaryTextColor
         balanceLabel.position = CGPoint(x: size.width / 2, y: yPosition - 30)
         balanceLabel.name = "debugBalanceLabel"
@@ -357,7 +358,7 @@ class SettingsScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = title
-        label.fontSize = 14
+        label.fontSize = fontSize(.callout)
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         label.position = .zero
@@ -397,7 +398,7 @@ class SettingsScene: SKScene {
         // Title
         let titleLabel = SKLabelNode(fontNamed: uiFont)
         titleLabel.text = title
-        titleLabel.fontSize = 18
+        titleLabel.fontSize = fontSize(.headline)
         titleLabel.fontColor = primaryTextColor
         titleLabel.horizontalAlignmentMode = .left
         titleLabel.position = CGPoint(x: -cardWidth/2 + 24, y: subtitle != nil ? 8 : 0)
@@ -408,7 +409,7 @@ class SettingsScene: SKScene {
         if let subtitle = subtitle {
             let subtitleLabel = SKLabelNode(fontNamed: uiFont)
             subtitleLabel.text = subtitle
-            subtitleLabel.fontSize = 11
+            subtitleLabel.fontSize = fontSize(.caption)
             subtitleLabel.fontColor = secondaryTextColor
             subtitleLabel.horizontalAlignmentMode = .left
             subtitleLabel.position = CGPoint(x: -cardWidth/2 + 24, y: -12)
@@ -453,7 +454,7 @@ class SettingsScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "← Back · 戻る" : "← Back"
-        label.fontSize = 16
+        label.fontSize = fontSize(.headline)
         label.fontColor = primaryTextColor
         label.verticalAlignmentMode = .center
         label.name = "backButton"

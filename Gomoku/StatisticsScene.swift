@@ -27,6 +27,7 @@ class StatisticsScene: SKScene {
     private let cardAccentRed = SKColor(red: 0.75, green: 0.22, blue: 0.17, alpha: 1.0)
 
     override func didMove(to view: SKView) {
+        initializeFontScaling()
         setupBackground()
         setupDecorations()
         setupHeader()
@@ -132,7 +133,7 @@ class StatisticsScene: SKScene {
         // Title
         let titleLabel = SKLabelNode(fontNamed: uiFont)
         titleLabel.text = isZenTheme ? "統計" : "Statistics"
-        titleLabel.fontSize = 36
+        titleLabel.fontSize = fontSize(.largeTitle)
         titleLabel.fontColor = primaryTextColor
         titleLabel.position = CGPoint(x: size.width / 2, y: size.height - 100)
         titleLabel.zPosition = 10
@@ -142,7 +143,7 @@ class StatisticsScene: SKScene {
         if isZenTheme {
             let subtitle = SKLabelNode(fontNamed: uiFont)
             subtitle.text = "Statistics"
-            subtitle.fontSize = 16
+            subtitle.fontSize = fontSize(.headline)
             subtitle.fontColor = secondaryTextColor
             subtitle.position = CGPoint(x: size.width / 2, y: size.height - 130)
             subtitle.zPosition = 10
@@ -250,7 +251,7 @@ class StatisticsScene: SKScene {
         // Title
         let titleLabel = SKLabelNode(fontNamed: uiFont)
         titleLabel.text = isZenTheme ? "対戦履歴" : "Game History"
-        titleLabel.fontSize = 18
+        titleLabel.fontSize = fontSize(.headline)
         titleLabel.fontColor = primaryTextColor
         titleLabel.horizontalAlignmentMode = .left
         titleLabel.verticalAlignmentMode = .center
@@ -262,7 +263,7 @@ class StatisticsScene: SKScene {
         let gameCount = GameHistoryManager.shared.gameCount
         let subtitleLabel = SKLabelNode(fontNamed: uiFont)
         subtitleLabel.text = isZenTheme ? "\(gameCount) games saved · \(gameCount)試合保存" : "\(gameCount) games saved"
-        subtitleLabel.fontSize = 12
+        subtitleLabel.fontSize = fontSize(.footnote)
         subtitleLabel.fontColor = secondaryTextColor
         subtitleLabel.horizontalAlignmentMode = .left
         subtitleLabel.verticalAlignmentMode = .center
@@ -274,7 +275,7 @@ class StatisticsScene: SKScene {
         if gameCount > 0 {
             let viewLabel = SKLabelNode(fontNamed: uiFont)
             viewLabel.text = isZenTheme ? "View ▶" : "View ▶"
-            viewLabel.fontSize = 14
+            viewLabel.fontSize = fontSize(.callout)
             viewLabel.fontColor = accentColor
             viewLabel.horizontalAlignmentMode = .right
             viewLabel.verticalAlignmentMode = .center
@@ -308,7 +309,7 @@ class StatisticsScene: SKScene {
         // Title
         let titleLabel = SKLabelNode(fontNamed: uiFont)
         titleLabel.text = title
-        titleLabel.fontSize = 18
+        titleLabel.fontSize = fontSize(.headline)
         titleLabel.fontColor = primaryTextColor
         titleLabel.horizontalAlignmentMode = .left
         titleLabel.position = CGPoint(x: position.x - cardWidth/2 + 24, y: position.y + cardHeight/2 - 28)
@@ -320,7 +321,7 @@ class StatisticsScene: SKScene {
         if let subtitle = subtitle {
             let subtitleLabel = SKLabelNode(fontNamed: uiFont)
             subtitleLabel.text = subtitle
-            subtitleLabel.fontSize = 11
+            subtitleLabel.fontSize = fontSize(.caption)
             subtitleLabel.fontColor = secondaryTextColor
             subtitleLabel.horizontalAlignmentMode = .left
             subtitleLabel.position = CGPoint(x: position.x - cardWidth/2 + 24, y: position.y + cardHeight/2 - 44)
@@ -335,7 +336,7 @@ class StatisticsScene: SKScene {
 
             let statLabel = SKLabelNode(fontNamed: uiFont)
             statLabel.text = label
-            statLabel.fontSize = 12
+            statLabel.fontSize = fontSize(.footnote)
             statLabel.fontColor = secondaryTextColor
             statLabel.horizontalAlignmentMode = .left
             statLabel.position = CGPoint(x: position.x - cardWidth/2 + 24, y: yOffset)
@@ -344,7 +345,7 @@ class StatisticsScene: SKScene {
 
             let valueLabel = SKLabelNode(fontNamed: uiFont)
             valueLabel.text = value
-            valueLabel.fontSize = 14
+            valueLabel.fontSize = fontSize(.callout)
             valueLabel.fontColor = primaryTextColor
             valueLabel.horizontalAlignmentMode = .right
             valueLabel.position = CGPoint(x: position.x + cardWidth/2 - 16, y: yOffset)
@@ -369,7 +370,7 @@ class StatisticsScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "← Back · 戻る" : "← Back"
-        label.fontSize = 16
+        label.fontSize = fontSize(.headline)
         label.fontColor = primaryTextColor
         label.verticalAlignmentMode = .center
         label.name = "backButton"

@@ -33,6 +33,9 @@ class MenuScene: SKScene {
     private let gold = SKColor(red: 0.85, green: 0.68, blue: 0.25, alpha: 1.0)
 
     override func didMove(to view: SKView) {
+        // Initialize font scaling for this scene
+        initializeFontScaling()
+
         setupParticleLayer()
         setupBackground()
         if isZenTheme {
@@ -468,7 +471,7 @@ class MenuScene: SKScene {
 
         coinLabel = SKLabelNode(fontNamed: uiFontBold)
         coinLabel.text = "\(CoinManager.shared.balance)"
-        coinLabel.fontSize = 16
+        coinLabel.fontSize = fontSize(.headline)
         coinLabel.fontColor = goldDark
         coinLabel.verticalAlignmentMode = .center
         coinLabel.horizontalAlignmentMode = .left
@@ -487,7 +490,7 @@ class MenuScene: SKScene {
 
         let plus = SKLabelNode(fontNamed: uiFontBold)
         plus.text = "+"
-        plus.fontSize = 14
+        plus.fontSize = fontSize(.callout)
         plus.fontColor = bamboo
         plus.verticalAlignmentMode = .center
         plus.position = CGPoint(x: 82, y: 0)
@@ -512,7 +515,7 @@ class MenuScene: SKScene {
         container.addChild(bg)
 
         let trophy = SKLabelNode(text: "🏆")
-        trophy.fontSize = 20
+        trophy.fontSize = fontSize(.title2)
         trophy.position = CGPoint(x: 0, y: -7)
         trophy.name = "gameCenter"
         container.addChild(trophy)
@@ -545,10 +548,10 @@ class MenuScene: SKScene {
         titleLabel = SKLabelNode(fontNamed: uiFontBold)
         if isZenTheme {
             titleLabel.text = "五目並べ"
-            titleLabel.fontSize = 44
+            titleLabel.fontSize = scaledFontSize(44)
         } else {
             titleLabel.text = "go!moku"
-            titleLabel.fontSize = 52
+            titleLabel.fontSize = scaledFontSize(52)
         }
         titleLabel.fontColor = theme.statusTextColor.skColor
         titleLabel.position = CGPoint(x: size.width / 2, y: size.height - 160)
@@ -558,12 +561,12 @@ class MenuScene: SKScene {
         let subtitle = SKLabelNode(fontNamed: uiFont)
         if isZenTheme {
             subtitle.text = "Gomoku"
-            subtitle.fontSize = 22
+            subtitle.fontSize = fontSize(.title)
             subtitle.position = CGPoint(x: size.width / 2, y: size.height - 200)
             drawHankoSeal(at: CGPoint(x: size.width / 2 + 85, y: size.height - 180))
         } else {
             subtitle.text = "Five in a Row"
-            subtitle.fontSize = 20
+            subtitle.fontSize = fontSize(.title2)
             subtitle.position = CGPoint(x: size.width / 2, y: size.height - 205)
         }
         subtitle.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.6)
@@ -583,7 +586,7 @@ class MenuScene: SKScene {
 
         let sealChar = SKLabelNode(fontNamed: "Hiragino Mincho ProN")
         sealChar.text = "碁"
-        sealChar.fontSize = 18
+        sealChar.fontSize = fontSize(.headline)
         sealChar.fontColor = .white
         sealChar.position = CGPoint(x: position.x, y: position.y - 6)
         sealChar.zPosition = 11
@@ -704,7 +707,7 @@ class MenuScene: SKScene {
 
         let titleLabel = SKLabelNode(fontNamed: uiFontBold)
         titleLabel.text = title
-        titleLabel.fontSize = 20
+        titleLabel.fontSize = fontSize(.title2)
         titleLabel.fontColor = .white
         titleLabel.position = CGPoint(x: 0, y: 6)
         titleLabel.name = name
@@ -712,7 +715,7 @@ class MenuScene: SKScene {
 
         let subtitleLabel = SKLabelNode(fontNamed: uiFont)
         subtitleLabel.text = subtitle
-        subtitleLabel.fontSize = 13
+        subtitleLabel.fontSize = fontSize(.subheadline)
         subtitleLabel.fontColor = SKColor.white.withAlphaComponent(0.8)
         subtitleLabel.position = CGPoint(x: 0, y: -14)
         subtitleLabel.name = name
@@ -881,7 +884,7 @@ class MenuScene: SKScene {
 
         let title = SKLabelNode(fontNamed: uiFontBold)
         title.text = isZenTheme ? "難易度選択" : "Select Difficulty"
-        title.fontSize = 22
+        title.fontSize = fontSize(.title)
         title.fontColor = theme.statusTextColor.skColor
         title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 160)
         title.zPosition = 102
@@ -891,7 +894,7 @@ class MenuScene: SKScene {
         if isZenTheme {
             let subtitle = SKLabelNode(fontNamed: uiFont)
             subtitle.text = "Select Difficulty"
-            subtitle.fontSize = 14
+            subtitle.fontSize = fontSize(.callout)
             subtitle.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.6)
             subtitle.position = CGPoint(x: size.width / 2, y: size.height / 2 + 130)
             subtitle.zPosition = 102
@@ -909,7 +912,7 @@ class MenuScene: SKScene {
 
         let cancel = SKLabelNode(fontNamed: uiFont)
         cancel.text = isZenTheme ? "Cancel · 取消" : "Cancel"
-        cancel.fontSize = 14
+        cancel.fontSize = fontSize(.callout)
         cancel.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.6)
         cancel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 175)
         cancel.zPosition = 102
@@ -945,7 +948,7 @@ class MenuScene: SKScene {
         // Label
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "Practice Mode · 練習" : "Practice Mode"
-        label.fontSize = 14
+        label.fontSize = fontSize(.callout)
         label.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.8)
         label.horizontalAlignmentMode = .left
         label.verticalAlignmentMode = .center
@@ -956,7 +959,7 @@ class MenuScene: SKScene {
         // Subtitle
         let subtitle = SKLabelNode(fontNamed: uiFont)
         subtitle.text = isZenTheme ? "Stats not recorded" : "Stats not recorded"
-        subtitle.fontSize = 10
+        subtitle.fontSize = fontSize(.caption)
         subtitle.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.5)
         subtitle.horizontalAlignmentMode = .left
         subtitle.verticalAlignmentMode = .center
@@ -1000,7 +1003,7 @@ class MenuScene: SKScene {
         } else {
             titleLabel.text = title
         }
-        titleLabel.fontSize = 16
+        titleLabel.fontSize = fontSize(.headline)
         titleLabel.fontColor = theme.buttonTextColor.skColor
         titleLabel.position = CGPoint(x: 0, y: -5)
         titleLabel.name = name
@@ -1049,7 +1052,7 @@ class MenuScene: SKScene {
         // Title
         let title = SKLabelNode(fontNamed: uiFontBold)
         title.text = isZenTheme ? "中断中のゲーム" : "Game in Progress"
-        title.fontSize = 22
+        title.fontSize = fontSize(.title)
         title.fontColor = theme.statusTextColor.skColor
         title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 85)
         title.zPosition = 102
@@ -1061,7 +1064,7 @@ class MenuScene: SKScene {
         // Subtitle
         let subtitle = SKLabelNode(fontNamed: uiFont)
         subtitle.text = isZenTheme ? "ゲームを続けますか？" : "Would you like to continue?"
-        subtitle.fontSize = 16
+        subtitle.fontSize = fontSize(.headline)
         subtitle.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.8)
         subtitle.position = CGPoint(x: size.width / 2, y: size.height / 2 + 50)
         subtitle.zPosition = 102
@@ -1083,7 +1086,7 @@ class MenuScene: SKScene {
 
         let continueLabel = SKLabelNode(fontNamed: uiFontBold)
         continueLabel.text = isZenTheme ? "続ける" : "Continue"
-        continueLabel.fontSize = 18
+        continueLabel.fontSize = fontSize(.headline)
         continueLabel.fontColor = .white
         continueLabel.verticalAlignmentMode = .center
         continueLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 10)
@@ -1106,7 +1109,7 @@ class MenuScene: SKScene {
 
         let newGameLabel = SKLabelNode(fontNamed: uiFontBold)
         newGameLabel.text = isZenTheme ? "新規ゲーム" : "New Game"
-        newGameLabel.fontSize = 18
+        newGameLabel.fontSize = fontSize(.headline)
         newGameLabel.fontColor = .white
         newGameLabel.verticalAlignmentMode = .center
         newGameLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 75)

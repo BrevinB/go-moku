@@ -93,6 +93,9 @@ class GameScene: SKScene {
     }
 
     override func didMove(to view: SKView) {
+        // Initialize font scaling for this scene
+        initializeFontScaling()
+
         // Create gradient background
         backgroundNode = createGradientBackground()
         addChild(backgroundNode)
@@ -548,7 +551,7 @@ class GameScene: SKScene {
 
     private func setupBoardCoordinates() {
         let letters = "ABCDEFGHJKLMNOP" // Skip 'I' as per Go convention
-        let fontSize: CGFloat = 12
+        let fontSize: CGFloat = fontManager.size(for: .footnote)
         // Use a darker, more visible color based on board color
         let coordinateColor = theme.boardColor.skColor.adjustedForCoordinates()
         let fontName = theme.id == "zen" ? "Hiragino Mincho ProN" : "AvenirNext-DemiBold"
@@ -630,7 +633,7 @@ class GameScene: SKScene {
         let uiFont = isZenTheme ? "Hiragino Mincho ProN" : "AvenirNext-Medium"
 
         statusLabel = SKLabelNode(fontNamed: uiFont)
-        statusLabel.fontSize = 22
+        statusLabel.fontSize = fontSize(.title2)
         statusLabel.position = CGPoint(x: size.width / 2, y: size.height - 80)
         statusLabel.fontColor = theme.statusTextColor.skColor
         statusLabel.verticalAlignmentMode = .center
@@ -646,7 +649,7 @@ class GameScene: SKScene {
         // Back button
         backButton = SKLabelNode(fontNamed: uiFont)
         backButton.text = isZenTheme ? "← 戻る" : "← Menu"
-        backButton.fontSize = 16
+        backButton.fontSize = fontSize(.headline)
         backButton.fontColor = theme.buttonTextColor.skColor
         backButton.position = CGPoint(x: 24, y: size.height - 145)
         backButton.name = "backButton"
@@ -667,7 +670,7 @@ class GameScene: SKScene {
 
         undoButton = SKLabelNode(fontNamed: uiFont)
         undoButton.text = isZenTheme ? "戻す · Undo" : "Undo"
-        undoButton.fontSize = 15
+        undoButton.fontSize = fontSize(.body)
         undoButton.fontColor = theme.buttonTextColor.skColor
         undoButton.position = CGPoint(x: size.width / 2 - 120, y: 45)
         undoButton.name = "undoButton"
@@ -692,7 +695,7 @@ class GameScene: SKScene {
 
         resetButton = SKLabelNode(fontNamed: uiFont)
         resetButton.text = isZenTheme ? "新規 · New" : "New Game"
-        resetButton.fontSize = 15
+        resetButton.fontSize = fontSize(.body)
         resetButton.fontColor = .white
         resetButton.position = CGPoint(x: size.width / 2 + 120, y: 45)
         resetButton.name = "resetButton"
@@ -724,7 +727,7 @@ class GameScene: SKScene {
         // Hint button label - shows remaining hints
         hintButtonLabel = SKLabelNode(fontNamed: uiFont)
         hintButtonLabel?.text = isZenTheme ? "助言 × \(hintBalance)" : "Hint × \(hintBalance)"
-        hintButtonLabel?.fontSize = 15
+        hintButtonLabel?.fontSize = fontSize(.body)
         hintButtonLabel?.fontColor = SKColor(red: 0.30, green: 0.22, blue: 0.10, alpha: 1.0)
         hintButtonLabel?.position = CGPoint(x: size.width / 2, y: 45)
         hintButtonLabel?.name = "hintButton"
@@ -788,7 +791,7 @@ class GameScene: SKScene {
 
         practiceModeLabel = SKLabelNode(fontNamed: uiFont)
         practiceModeLabel?.text = isZenTheme ? "練習モード" : "Practice Mode"
-        practiceModeLabel?.fontSize = 12
+        practiceModeLabel?.fontSize = fontSize(.footnote)
         practiceModeLabel?.fontColor = bamboo
         practiceModeLabel?.verticalAlignmentMode = .center
         practiceModeLabel?.horizontalAlignmentMode = .center
@@ -1103,7 +1106,7 @@ class GameScene: SKScene {
         // Add "AI thinking..." label
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "思考中..." : "Thinking..."
-        label.fontSize = 13
+        label.fontSize = fontSize(.subheadline)
         label.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.7)
         label.position = CGPoint(x: 0, y: -20)
         label.verticalAlignmentMode = .center
@@ -1349,7 +1352,7 @@ class GameScene: SKScene {
         // Badge label
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = text
-        label.fontSize = 20
+        label.fontSize = fontSize(.title2)
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         badge.addChild(label)
@@ -1431,7 +1434,7 @@ class GameScene: SKScene {
         // Coin text
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = "+\(coins)"
-        label.fontSize = 20
+        label.fontSize = fontSize(.title2)
         label.fontColor = SKColor(red: 0.30, green: 0.22, blue: 0.10, alpha: 1.0)
         label.verticalAlignmentMode = .center
         label.horizontalAlignmentMode = .left
@@ -1483,7 +1486,7 @@ class GameScene: SKScene {
         // Create share button label
         shareButton = SKLabelNode(fontNamed: uiFont)
         shareButton?.text = isZenTheme ? "共有 · Share" : "Share"
-        shareButton?.fontSize = 16
+        shareButton?.fontSize = fontSize(.headline)
         shareButton?.fontColor = theme.buttonTextColor.skColor
         shareButton?.position = CGPoint(x: size.width / 2, y: 110)
         shareButton?.name = "shareButton"
@@ -1782,7 +1785,7 @@ class GameScene: SKScene {
 
         confirmButtonLabel = SKLabelNode(fontNamed: isZenTheme ? "Hiragino Mincho ProN" : "AvenirNext-Bold")
         confirmButtonLabel?.text = isZenTheme ? "決" : "✓"
-        confirmButtonLabel?.fontSize = isZenTheme ? 20 : 24
+        confirmButtonLabel?.fontSize = isZenTheme ? fontSize(.title2) : fontSize(.title)
         confirmButtonLabel?.fontColor = .white
         confirmButtonLabel?.verticalAlignmentMode = .center
         confirmButtonLabel?.horizontalAlignmentMode = .center
@@ -1812,7 +1815,7 @@ class GameScene: SKScene {
 
         cancelButtonLabel = SKLabelNode(fontNamed: isZenTheme ? "Hiragino Mincho ProN" : "AvenirNext-Bold")
         cancelButtonLabel?.text = isZenTheme ? "消" : "✕"
-        cancelButtonLabel?.fontSize = isZenTheme ? 20 : 22
+        cancelButtonLabel?.fontSize = isZenTheme ? fontSize(.title2) : fontSize(.title2)
         cancelButtonLabel?.fontColor = .white
         cancelButtonLabel?.verticalAlignmentMode = .center
         cancelButtonLabel?.horizontalAlignmentMode = .center
@@ -1974,7 +1977,7 @@ class GameScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "推奨手 · Hint" : "Suggested Move"
-        label.fontSize = 15
+        label.fontSize = fontSize(.body)
         label.fontColor = SKColor(red: 0.30, green: 0.22, blue: 0.10, alpha: 1.0)
         label.verticalAlignmentMode = .center
         toast.addChild(label)
@@ -2069,7 +2072,7 @@ class GameScene: SKScene {
         bulbContainer.addChild(bulbGlow)
 
         let bulbIcon = SKLabelNode(text: "💡")
-        bulbIcon.fontSize = 44
+        bulbIcon.fontSize = scaledFontSize(44)
         bulbIcon.verticalAlignmentMode = .center
         bulbContainer.addChild(bulbIcon)
 
@@ -2083,7 +2086,7 @@ class GameScene: SKScene {
         // Title
         let title = SKLabelNode(fontNamed: uiFontBold)
         title.text = isZenTheme ? "助言が必要？" : "Need a Hint?"
-        title.fontSize = 24
+        title.fontSize = fontSize(.title)
         title.fontColor = SKColor(red: 0.2, green: 0.2, blue: 0.25, alpha: 1.0)
         title.position = CGPoint(x: centerX, y: centerY + cardHeight / 2 - 110)
         container.addChild(title)
@@ -2115,7 +2118,7 @@ class GameScene: SKScene {
 
         let balanceLabel = SKLabelNode(fontNamed: uiFontBold)
         balanceLabel.text = "\(CoinManager.shared.balance)"
-        balanceLabel.fontSize = 16
+        balanceLabel.fontSize = fontSize(.headline)
         balanceLabel.fontColor = goldDark
         balanceLabel.horizontalAlignmentMode = .left
         balanceLabel.verticalAlignmentMode = .center
@@ -2150,7 +2153,7 @@ class GameScene: SKScene {
 
         let closeX = SKLabelNode(fontNamed: uiFontBold)
         closeX.text = "✕"
-        closeX.fontSize = 14
+        closeX.fontSize = fontSize(.callout)
         closeX.fontColor = SKColor(red: 0.5, green: 0.5, blue: 0.55, alpha: 1.0)
         closeX.verticalAlignmentMode = .center
         closeX.horizontalAlignmentMode = .center
@@ -2173,7 +2176,7 @@ class GameScene: SKScene {
 
         let getCoinsLabel = SKLabelNode(fontNamed: uiFontBold)
         getCoinsLabel.text = isZenTheme ? "🪙 コインを購入" : "🪙 Get More Coins"
-        getCoinsLabel.fontSize = 13
+        getCoinsLabel.fontSize = fontSize(.subheadline)
         getCoinsLabel.fontColor = SKColor(red: 0.35, green: 0.25, blue: 0.10, alpha: 1.0)
         getCoinsLabel.verticalAlignmentMode = .center
         getCoinsLabel.name = "getMoreCoins"
@@ -2182,7 +2185,7 @@ class GameScene: SKScene {
         // "No thanks" text at bottom
         let noThanks = SKLabelNode(fontNamed: uiFont)
         noThanks.text = isZenTheme ? "閉じる" : "No thanks"
-        noThanks.fontSize = 13
+        noThanks.fontSize = fontSize(.subheadline)
         noThanks.fontColor = SKColor(red: 0.5, green: 0.5, blue: 0.55, alpha: 1.0)
         noThanks.position = CGPoint(x: centerX, y: centerY - cardHeight / 2 + 30)
         noThanks.name = "closePaywall"
@@ -2239,7 +2242,7 @@ class GameScene: SKScene {
 
             let badgeLabel = SKLabelNode(fontNamed: uiFontBold)
             badgeLabel.text = "BEST"
-            badgeLabel.fontSize = 8
+            badgeLabel.fontSize = fontSize(.caption2)
             badgeLabel.fontColor = .white
             badgeLabel.verticalAlignmentMode = .center
             badgeLabel.position = CGPoint(x: 0, y: optionHeight / 2 + 2)
@@ -2260,7 +2263,7 @@ class GameScene: SKScene {
         }
 
         let icon = SKLabelNode(text: "💡")
-        icon.fontSize = 24
+        icon.fontSize = fontSize(.title)
         icon.verticalAlignmentMode = .center
         icon.alpha = canAfford ? 1.0 : 0.4
         iconContainer.addChild(icon)
@@ -2268,7 +2271,7 @@ class GameScene: SKScene {
         // Pack name and count
         let nameLabel = SKLabelNode(fontNamed: uiFontBold)
         nameLabel.text = pack.displayName
-        nameLabel.fontSize = 15
+        nameLabel.fontSize = fontSize(.body)
         nameLabel.fontColor = canAfford ? SKColor(red: 0.2, green: 0.2, blue: 0.25, alpha: 1.0) : SKColor.gray
         nameLabel.horizontalAlignmentMode = .left
         nameLabel.verticalAlignmentMode = .center
@@ -2281,7 +2284,7 @@ class GameScene: SKScene {
         if let savings = pack.savingsText {
             let savingsLabel = SKLabelNode(fontNamed: uiFont)
             savingsLabel.text = savings
-            savingsLabel.fontSize = 10
+            savingsLabel.fontSize = fontSize(.caption)
             savingsLabel.fontColor = canAfford ? hintGreen : SKColor.gray.withAlphaComponent(0.6)
             savingsLabel.horizontalAlignmentMode = .left
             savingsLabel.verticalAlignmentMode = .center
@@ -2308,7 +2311,7 @@ class GameScene: SKScene {
 
         let priceLabel = SKLabelNode(fontNamed: uiFontBold)
         priceLabel.text = "\(pack.coinCost)"
-        priceLabel.fontSize = 12
+        priceLabel.fontSize = fontSize(.footnote)
         priceLabel.fontColor = canAfford ? SKColor(red: 0.35, green: 0.25, blue: 0.10, alpha: 1.0) : SKColor.white
         priceLabel.verticalAlignmentMode = .center
         priceLabel.position = CGPoint(x: optionWidth / 2 - 35, y: 0)
@@ -2382,7 +2385,7 @@ class GameScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "+\(hints) 助言!" : "+\(hints) Hints!"
-        label.fontSize = 18
+        label.fontSize = fontSize(.headline)
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         toast.addChild(label)
@@ -2507,7 +2510,7 @@ class GameScene: SKScene {
         // Title
         let title = SKLabelNode(fontNamed: uiFontBold)
         title.text = isZenTheme ? "コインを購入" : "Get Coins"
-        title.fontSize = 24
+        title.fontSize = fontSize(.title)
         title.fontColor = SKColor(red: 0.2, green: 0.2, blue: 0.25, alpha: 1.0)
         title.position = CGPoint(x: centerX, y: centerY + cardHeight / 2 - 110)
         container.addChild(title)
@@ -2539,7 +2542,7 @@ class GameScene: SKScene {
 
         let closeX = SKLabelNode(fontNamed: uiFontBold)
         closeX.text = "✕"
-        closeX.fontSize = 14
+        closeX.fontSize = fontSize(.callout)
         closeX.fontColor = SKColor(red: 0.5, green: 0.5, blue: 0.55, alpha: 1.0)
         closeX.verticalAlignmentMode = .center
         closeX.horizontalAlignmentMode = .center
@@ -2549,7 +2552,7 @@ class GameScene: SKScene {
         // Back text at bottom
         let backLabel = SKLabelNode(fontNamed: uiFont)
         backLabel.text = isZenTheme ? "戻る" : "Back"
-        backLabel.fontSize = 13
+        backLabel.fontSize = fontSize(.subheadline)
         backLabel.fontColor = SKColor(red: 0.5, green: 0.5, blue: 0.55, alpha: 1.0)
         backLabel.position = CGPoint(x: centerX, y: centerY - cardHeight / 2 + 25)
         backLabel.name = "closeCoinPaywall"
@@ -2601,7 +2604,7 @@ class GameScene: SKScene {
 
             let badgeLabel = SKLabelNode(fontNamed: uiFontBold)
             badgeLabel.text = "BEST"
-            badgeLabel.fontSize = 8
+            badgeLabel.fontSize = fontSize(.caption2)
             badgeLabel.fontColor = .white
             badgeLabel.verticalAlignmentMode = .center
             badgeLabel.position = CGPoint(x: 0, y: optionHeight / 2 + 2)
@@ -2617,7 +2620,7 @@ class GameScene: SKScene {
 
             let badgeLabel = SKLabelNode(fontNamed: uiFontBold)
             badgeLabel.text = "HOT"
-            badgeLabel.fontSize = 8
+            badgeLabel.fontSize = fontSize(.caption2)
             badgeLabel.fontColor = .white
             badgeLabel.verticalAlignmentMode = .center
             badgeLabel.position = CGPoint(x: 0, y: optionHeight / 2 + 2)
@@ -2642,7 +2645,7 @@ class GameScene: SKScene {
         // Amount
         let amountLabel = SKLabelNode(fontNamed: uiFontBold)
         amountLabel.text = "\(pack.coinAmount) Coins"
-        amountLabel.fontSize = 15
+        amountLabel.fontSize = fontSize(.body)
         amountLabel.fontColor = SKColor(red: 0.2, green: 0.2, blue: 0.25, alpha: 1.0)
         amountLabel.horizontalAlignmentMode = .left
         amountLabel.verticalAlignmentMode = .center
@@ -2661,7 +2664,7 @@ class GameScene: SKScene {
 
         let priceLabel = SKLabelNode(fontNamed: uiFontBold)
         priceLabel.text = StoreManager.shared.getLocalizedPrice(for: pack)
-        priceLabel.fontSize = 12
+        priceLabel.fontSize = fontSize(.footnote)
         priceLabel.fontColor = .white
         priceLabel.verticalAlignmentMode = .center
         priceLabel.position = CGPoint(x: optionWidth / 2 - 45, y: 0)
@@ -2741,7 +2744,7 @@ class GameScene: SKScene {
         let uiFont = theme.id == "zen" ? "Hiragino Mincho ProN" : "AvenirNext-Medium"
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = theme.id == "zen" ? "処理中..." : "Processing..."
-        label.fontSize = 14
+        label.fontSize = fontSize(.callout)
         label.fontColor = SKColor(red: 0.3, green: 0.3, blue: 0.35, alpha: 1.0)
         label.position = CGPoint(x: size.width / 2, y: size.height / 2 - 40)
         container.addChild(label)
@@ -2803,7 +2806,7 @@ class GameScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFontBold)
         label.text = "+\(coins) 🪙"
-        label.fontSize = 20
+        label.fontSize = fontSize(.title2)
         label.fontColor = .white
         label.verticalAlignmentMode = .center
         toast.addChild(label)
