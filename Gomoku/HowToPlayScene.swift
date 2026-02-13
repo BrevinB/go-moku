@@ -43,6 +43,7 @@ class HowToPlayScene: SKScene {
     private let totalPages = 4
 
     override func didMove(to view: SKView) {
+        initializeFontScaling()
         setupBackground()
         setupDecorations()
         setupHeader()
@@ -103,7 +104,7 @@ class HowToPlayScene: SKScene {
     private func setupHeader() {
         let titleLabel = SKLabelNode(fontNamed: uiFontBold)
         titleLabel.text = isZenTheme ? "遊び方" : "How to Play"
-        titleLabel.fontSize = 32
+        titleLabel.fontSize = fontSize(.largeTitle)
         titleLabel.fontColor = primaryTextColor
         titleLabel.position = CGPoint(x: size.width / 2, y: size.height - 100)
         titleLabel.zPosition = 20
@@ -112,7 +113,7 @@ class HowToPlayScene: SKScene {
         if isZenTheme {
             let subtitle = SKLabelNode(fontNamed: uiFont)
             subtitle.text = "How to Play"
-            subtitle.fontSize = 14
+            subtitle.fontSize = fontSize(.callout)
             subtitle.fontColor = secondaryTextColor
             subtitle.position = CGPoint(x: size.width / 2, y: size.height - 125)
             subtitle.zPosition = 20
@@ -348,7 +349,7 @@ class HowToPlayScene: SKScene {
         // Ready to play message
         let readyLabel = SKLabelNode(fontNamed: uiFontBold)
         readyLabel.text = isZenTheme ? "準備完了！" : "You're ready to play!"
-        readyLabel.fontSize = 20
+        readyLabel.fontSize = fontSize(.title2)
         readyLabel.fontColor = accentColor
         readyLabel.position = CGPoint(x: size.width / 2, y: currentY)
         scrollNode.addChild(readyLabel)
@@ -357,7 +358,7 @@ class HowToPlayScene: SKScene {
 
         let subReadyLabel = SKLabelNode(fontNamed: uiFont)
         subReadyLabel.text = isZenTheme ? "Good luck! · 頑張って！" : "Good luck and have fun!"
-        subReadyLabel.fontSize = 14
+        subReadyLabel.fontSize = fontSize(.callout)
         subReadyLabel.fontColor = secondaryTextColor
         subReadyLabel.position = CGPoint(x: size.width / 2, y: currentY)
         scrollNode.addChild(subReadyLabel)
@@ -376,7 +377,7 @@ class HowToPlayScene: SKScene {
         // Section title with accent underline
         let titleLabel = SKLabelNode(fontNamed: uiFontBold)
         titleLabel.text = title
-        titleLabel.fontSize = 22
+        titleLabel.fontSize = fontSize(.title)
         titleLabel.fontColor = primaryTextColor
         titleLabel.position = CGPoint(x: size.width / 2, y: currentY)
         titleLabel.zPosition = 10
@@ -397,7 +398,7 @@ class HowToPlayScene: SKScene {
             for line in lines {
                 let contentLabel = SKLabelNode(fontNamed: uiFont)
                 contentLabel.text = line
-                contentLabel.fontSize = 15
+                contentLabel.fontSize = fontSize(.body)
                 contentLabel.fontColor = secondaryTextColor
                 contentLabel.position = CGPoint(x: size.width / 2, y: currentY)
                 contentLabel.zPosition = 10
@@ -432,7 +433,7 @@ class HowToPlayScene: SKScene {
 
         let numLabel = SKLabelNode(fontNamed: uiFontBold)
         numLabel.text = "\(number)"
-        numLabel.fontSize = 14
+        numLabel.fontSize = fontSize(.callout)
         numLabel.fontColor = .white
         numLabel.verticalAlignmentMode = .center
         numLabel.position = CGPoint(x: -cardWidth/2 + 24, y: 0)
@@ -442,7 +443,7 @@ class HowToPlayScene: SKScene {
         // Tip text
         let tipLabel = SKLabelNode(fontNamed: uiFont)
         tipLabel.text = text
-        tipLabel.fontSize = 14
+        tipLabel.fontSize = fontSize(.callout)
         tipLabel.fontColor = primaryTextColor
         tipLabel.horizontalAlignmentMode = .left
         tipLabel.verticalAlignmentMode = .center
@@ -532,7 +533,7 @@ class HowToPlayScene: SKScene {
         // Label below board (inside card)
         let label = SKLabelNode(fontNamed: uiFontBold)
         label.text = isZenTheme ? "五目で勝ち！" : "Five in a row wins!"
-        label.fontSize = 14
+        label.fontSize = fontSize(.callout)
         label.fontColor = accentColor
         label.position = CGPoint(x: size.width / 2, y: centerY - boardSize / 2 - 22)
         label.zPosition = 8
@@ -565,7 +566,7 @@ class HowToPlayScene: SKScene {
 
         let blackLabel = SKLabelNode(fontNamed: uiFontBold)
         blackLabel.text = isZenTheme ? "先手" : "First"
-        blackLabel.fontSize = 13
+        blackLabel.fontSize = fontSize(.subheadline)
         blackLabel.fontColor = primaryTextColor
         blackLabel.position = CGPoint(x: -70, y: -25)
         blackLabel.zPosition = 1
@@ -574,7 +575,7 @@ class HowToPlayScene: SKScene {
         // Arrow
         let arrow = SKLabelNode(fontNamed: uiFontBold)
         arrow.text = "→"
-        arrow.fontSize = 28
+        arrow.fontSize = scaledFontSize(28)
         arrow.fontColor = accentColor
         arrow.verticalAlignmentMode = .center
         arrow.position = CGPoint(x: 0, y: 5)
@@ -592,7 +593,7 @@ class HowToPlayScene: SKScene {
 
         let whiteLabel = SKLabelNode(fontNamed: uiFontBold)
         whiteLabel.text = isZenTheme ? "後手" : "Second"
-        whiteLabel.fontSize = 13
+        whiteLabel.fontSize = fontSize(.subheadline)
         whiteLabel.fontColor = primaryTextColor
         whiteLabel.position = CGPoint(x: 70, y: -25)
         whiteLabel.zPosition = 1
@@ -663,7 +664,7 @@ class HowToPlayScene: SKScene {
             // Label
             let label = SKLabelNode(fontNamed: uiFontBold)
             label.text = pattern
-            label.fontSize = 12
+            label.fontSize = fontSize(.footnote)
             label.fontColor = primaryTextColor
             label.position = CGPoint(x: x, y: -miniSize / 2 - 12)
             label.zPosition = 1
@@ -748,7 +749,7 @@ class HowToPlayScene: SKScene {
         // Label
         let label = SKLabelNode(fontNamed: uiFontBold)
         label.text = isZenTheme ? "基本の序盤" : "Sample Opening Sequence"
-        label.fontSize = 12
+        label.fontSize = fontSize(.footnote)
         label.fontColor = primaryTextColor
         label.position = CGPoint(x: size.width / 2, y: centerY - boardSize / 2 - 20)
         label.zPosition = 6
@@ -768,7 +769,7 @@ class HowToPlayScene: SKScene {
 
         let numLabel = SKLabelNode(fontNamed: uiFontBold)
         numLabel.text = "\(number)"
-        numLabel.fontSize = radius * 1.2
+        numLabel.fontSize = scaledFontSize(radius * 1.2)
         numLabel.fontColor = player == .black ? .white : .black
         numLabel.verticalAlignmentMode = .center
         numLabel.horizontalAlignmentMode = .center
@@ -795,7 +796,7 @@ class HowToPlayScene: SKScene {
         // Pattern name
         let nameLabel = SKLabelNode(fontNamed: uiFontBold)
         nameLabel.text = name
-        nameLabel.fontSize = 15
+        nameLabel.fontSize = fontSize(.body)
         nameLabel.fontColor = primaryTextColor
         nameLabel.horizontalAlignmentMode = .left
         nameLabel.position = CGPoint(x: -cardWidth/2 + 15, y: 15)
@@ -805,7 +806,7 @@ class HowToPlayScene: SKScene {
         // Description
         let descLabel = SKLabelNode(fontNamed: uiFont)
         descLabel.text = description
-        descLabel.fontSize = 12
+        descLabel.fontSize = fontSize(.footnote)
         descLabel.fontColor = secondaryTextColor
         descLabel.horizontalAlignmentMode = .left
         descLabel.position = CGPoint(x: -cardWidth/2 + 15, y: -8)
@@ -949,7 +950,7 @@ class HowToPlayScene: SKScene {
         // Label
         let label = SKLabelNode(fontNamed: uiFontBold)
         label.text = isZenTheme ? "赤い所をブロック！" : "Block the red spots!"
-        label.fontSize = 13
+        label.fontSize = fontSize(.subheadline)
         label.fontColor = SKColor(red: 0.8, green: 0.2, blue: 0.15, alpha: 1.0)
         label.position = CGPoint(x: size.width / 2, y: centerY - boardSize / 2 - 20)
         label.zPosition = 7
@@ -1020,7 +1021,7 @@ class HowToPlayScene: SKScene {
 
         // Star marker on key stone
         let star = SKLabelNode(text: "★")
-        star.fontSize = stoneRadius * 1.0
+        star.fontSize = scaledFontSize(stoneRadius * 1.0)
         star.fontColor = SKColor(red: 0.95, green: 0.75, blue: 0.1, alpha: 1.0)
         star.verticalAlignmentMode = .center
         star.position = CGPoint(x: forkCenterX, y: forkCenterY)
@@ -1070,7 +1071,7 @@ class HowToPlayScene: SKScene {
         // Label
         let label = SKLabelNode(fontNamed: uiFontBold)
         label.text = isZenTheme ? "★が四三を作る！" : "★ creates double threat!"
-        label.fontSize = 12
+        label.fontSize = fontSize(.footnote)
         label.fontColor = SKColor(red: 0.85, green: 0.65, blue: 0.0, alpha: 1.0)
         label.position = CGPoint(x: size.width / 2, y: centerY - boardSize / 2 - 20)
         label.zPosition = 8
@@ -1095,7 +1096,7 @@ class HowToPlayScene: SKScene {
 
         let termLabel = SKLabelNode(fontNamed: uiFontBold)
         termLabel.text = term
-        termLabel.fontSize = 13
+        termLabel.fontSize = fontSize(.subheadline)
         termLabel.fontColor = accentColor
         termLabel.horizontalAlignmentMode = .left
         termLabel.verticalAlignmentMode = .center
@@ -1105,7 +1106,7 @@ class HowToPlayScene: SKScene {
 
         let meaningLabel = SKLabelNode(fontNamed: uiFont)
         meaningLabel.text = meaning
-        meaningLabel.fontSize = 12
+        meaningLabel.fontSize = fontSize(.footnote)
         meaningLabel.fontColor = primaryTextColor
         meaningLabel.horizontalAlignmentMode = .left
         meaningLabel.verticalAlignmentMode = .center
@@ -1132,7 +1133,7 @@ class HowToPlayScene: SKScene {
 
         let label = SKLabelNode(fontNamed: uiFont)
         label.text = isZenTheme ? "← Back · 戻る" : "← Back to Menu"
-        label.fontSize = 16
+        label.fontSize = fontSize(.headline)
         label.fontColor = primaryTextColor
         label.verticalAlignmentMode = .center
         label.name = "backButton"
@@ -1143,7 +1144,7 @@ class HowToPlayScene: SKScene {
         // Scroll hint
         let hintLabel = SKLabelNode(fontNamed: uiFont)
         hintLabel.text = isZenTheme ? "↕ スクロール" : "↕ Scroll for more"
-        hintLabel.fontSize = 11
+        hintLabel.fontSize = fontSize(.caption)
         hintLabel.fontColor = secondaryTextColor.withAlphaComponent(0.6)
         hintLabel.position = CGPoint(x: size.width / 2, y: 115)
         hintLabel.zPosition = 20

@@ -60,6 +60,7 @@ class ReplayScene: SKScene {
     }
 
     override func didMove(to view: SKView) {
+        initializeFontScaling()
         setupBackground()
         setupBoard()
         setupHeader()
@@ -227,7 +228,7 @@ class ReplayScene: SKScene {
         // Title with game info
         let titleLabel = SKLabelNode(fontNamed: uiFont)
         titleLabel.text = isZenTheme ? "リプレイ" : "Replay"
-        titleLabel.fontSize = 24
+        titleLabel.fontSize = fontSize(.title)
         titleLabel.fontColor = primaryTextColor
         titleLabel.position = CGPoint(x: size.width / 2, y: size.height - 50)
         titleLabel.zPosition = 10
@@ -240,7 +241,7 @@ class ReplayScene: SKScene {
         } else {
             infoLabel.text = "\(game.modeDescription) · \(game.resultDescription)"
         }
-        infoLabel.fontSize = 13
+        infoLabel.fontSize = fontSize(.subheadline)
         infoLabel.fontColor = secondaryTextColor
         infoLabel.position = CGPoint(x: size.width / 2, y: size.height - 75)
         infoLabel.zPosition = 10
@@ -262,7 +263,7 @@ class ReplayScene: SKScene {
 
         let backLabel = SKLabelNode(fontNamed: uiFont)
         backLabel.text = "← Back"
-        backLabel.fontSize = 14
+        backLabel.fontSize = fontSize(.callout)
         backLabel.fontColor = primaryTextColor
         backLabel.verticalAlignmentMode = .center
         backLabel.name = "backButton"
@@ -276,7 +277,7 @@ class ReplayScene: SKScene {
 
         // Move count label
         moveCountLabel = SKLabelNode(fontNamed: uiFont)
-        moveCountLabel.fontSize = 16
+        moveCountLabel.fontSize = fontSize(.headline)
         moveCountLabel.fontColor = primaryTextColor
         moveCountLabel.position = CGPoint(x: size.width / 2, y: controlsY + 45)
         moveCountLabel.zPosition = 10
@@ -302,7 +303,7 @@ class ReplayScene: SKScene {
 
         playPauseIcon = SKLabelNode(fontNamed: "AvenirNext-Bold")
         playPauseIcon.text = "▶"
-        playPauseIcon.fontSize = 24
+        playPauseIcon.fontSize = fontSize(.title)
         playPauseIcon.fontColor = accentColor
         playPauseIcon.verticalAlignmentMode = .center
         playPauseIcon.horizontalAlignmentMode = .center
@@ -330,7 +331,7 @@ class ReplayScene: SKScene {
 
         speedLabel = SKLabelNode(fontNamed: uiFont)
         speedLabel.text = "1x"
-        speedLabel.fontSize = 14
+        speedLabel.fontSize = fontSize(.callout)
         speedLabel.fontColor = primaryTextColor
         speedLabel.verticalAlignmentMode = .center
         speedLabel.name = "speedButton"
@@ -352,7 +353,7 @@ class ReplayScene: SKScene {
 
         let iconLabel = SKLabelNode(fontNamed: "AvenirNext-Medium")
         iconLabel.text = icon
-        iconLabel.fontSize = 18
+        iconLabel.fontSize = fontSize(.headline)
         iconLabel.fontColor = primaryTextColor
         iconLabel.verticalAlignmentMode = .center
         iconLabel.horizontalAlignmentMode = .center
