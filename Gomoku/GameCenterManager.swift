@@ -281,8 +281,22 @@ class GameCenterManager: NSObject {
             guard let self = self else { return }
 
             if let matches = matches {
-                // Filter to only open matches
-                self.activeMatches = matches.filter { $0.status == .open }
+                // End any open matches where the opponent has quit
+                for match in matches where match.status == .open {
+                    if match.currentParticipant?.player == GKLocalPlayer.local {
+                        let opponent = match.participants.first { $0.player != GKLocalPlayer.local }
+                        if opponent?.matchOutcome == .quit {
+                            self.endMatchForOpponentQuit(match)
+                        }
+                    }
+                }
+
+                // Filter to only open matches (excluding ones where opponent quit)
+                self.activeMatches = matches.filter { match in
+                    guard match.status == .open else { return false }
+                    let opponent = match.participants.first { $0.player != GKLocalPlayer.local }
+                    return opponent?.matchOutcome != .quit
+                }
                 // Post notification so UI can update
                 DispatchQueue.main.async {
                     NotificationCenter.default.post(name: .gameCenterMatchesRefreshed, object: nil)
@@ -320,6 +334,15 @@ extension GameCenterManager: GKTurnBasedMatchmakerViewControllerDelegate {
 // MARK: - GKLocalPlayerListener
 extension GameCenterManager: GKLocalPlayerListener {
     func player(_ player: GKPlayer, receivedTurnEventFor match: GKTurnBasedMatch, didBecomeActive: Bool) {
+        // Check if opponent quit - if so, end the match automatically
+        if match.status == .open && match.currentParticipant?.player == GKLocalPlayer.local {
+            let opponent = match.participants.first { $0.player != GKLocalPlayer.local }
+            if opponent?.matchOutcome == .quit {
+                endMatchForOpponentQuit(match)
+                return
+            }
+        }
+
         // Refresh active matches list
         refreshActiveMatches()
 
@@ -359,15 +382,27 @@ extension GameCenterManager: GKLocalPlayerListener {
     }
 
     func player(_ player: GKPlayer, wantsToQuitMatch match: GKTurnBasedMatch) {
-        // Handle player wanting to quit
-        match.participantQuitInTurn(
-            with: .quit,
-            nextParticipants: match.participants.filter { $0.player != GKLocalPlayer.local },
-            turnTimeout: GKTurnTimeoutDefault,
-            match: match.matchData ?? Data()
-        ) { error in
+        // Opponent wants to quit - end the match with local player winning
+        endMatchForOpponentQuit(match)
+    }
+
+    /// Ends a match where the opponent has quit, awarding the local player a win
+    private func endMatchForOpponentQuit(_ match: GKTurnBasedMatch) {
+        for participant in match.participants {
+            if participant.player == GKLocalPlayer.local {
+                participant.matchOutcome = .won
+            } else {
+                participant.matchOutcome = .quit
+            }
+        }
+
+        match.endMatchInTurn(withMatch: match.matchData ?? Data()) { [weak self] error in
             if let error = error {
-                print("Error quitting match: \(error.localizedDescription)")
+                print("Error ending match after opponent quit: \(error.localizedDescription)")
+            }
+            self?.refreshActiveMatches()
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: .gameCenterMatchEnded, object: match)
             }
         }
     }

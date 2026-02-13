@@ -286,6 +286,10 @@ class TurnBasedMatchManager {
         // Get next participant
         let nextParticipants = match.participants.filter { $0.player != GKLocalPlayer.local }
 
+        // Set notification message (only shown to other participants)
+        let playerName = GKLocalPlayer.local.displayName
+        match.setLocalizableMessageWithKey("%@ played. It's your turn!", arguments: [playerName])
+
         // Execute with retry
         executeMoveWithRetry(
             match: match,
@@ -396,6 +400,9 @@ class TurnBasedMatchManager {
             }
         }
 
+        let playerName = GKLocalPlayer.local.displayName
+        match.setLocalizableMessageWithKey("%@ wins! Game over.", arguments: [playerName])
+
         match.endMatchInTurn(withMatch: encodedData) { error in
             if let error = error {
                 completion(MatchError.from(error))
@@ -436,6 +443,9 @@ class TurnBasedMatchManager {
             }
         }
 
+        let opponentName = match.participants.first(where: { $0.player != GKLocalPlayer.local })?.player?.displayName ?? "Opponent"
+        match.setLocalizableMessageWithKey("%@ wins! Game over.", arguments: [opponentName])
+
         match.endMatchInTurn(withMatch: encodedData) { error in
             if let error = error {
                 completion(MatchError.from(error))
@@ -473,7 +483,33 @@ class TurnBasedMatchManager {
             }
         }
 
+        match.setLocalizableMessageWithKey("Game ended in a draw!", arguments: nil)
+
         match.endMatchInTurn(withMatch: encodedData) { error in
+            if let error = error {
+                completion(MatchError.from(error))
+            } else {
+                completion(nil)
+            }
+        }
+    }
+
+    /// End the match when opponent has quit, awarding local player the win
+    func endMatchForOpponentQuit(completion: @escaping (MatchError?) -> Void) {
+        guard let match = currentMatch else {
+            completion(.noActiveMatch)
+            return
+        }
+
+        for participant in match.participants {
+            if participant.player == GKLocalPlayer.local {
+                participant.matchOutcome = .won
+            } else {
+                participant.matchOutcome = .quit
+            }
+        }
+
+        match.endMatchInTurn(withMatch: match.matchData ?? Data()) { error in
             if let error = error {
                 completion(MatchError.from(error))
             } else {
@@ -492,6 +528,9 @@ class TurnBasedMatchManager {
             completion(.noActiveMatch)
             return
         }
+
+        let playerName = GKLocalPlayer.local.displayName
+        match.setLocalizableMessageWithKey("%@ has resigned. You win!", arguments: [playerName])
 
         if isMyTurn {
             let nextParticipants = match.participants.filter { $0.player != GKLocalPlayer.local }

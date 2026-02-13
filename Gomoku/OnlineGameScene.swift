@@ -434,10 +434,11 @@ class OnlineGameScene: SKScene {
         // Clear existing stones
         stonesNode.removeAllChildren()
 
-        // Redraw all stones from move history
+        // Redraw all stones from move history, marking the last one
         let moves = board.getMoveHistory()
-        for move in moves {
-            drawStone(at: move.row, col: move.col, player: move.player, animated: false)
+        for (index, move) in moves.enumerated() {
+            let isLast = index == moves.count - 1
+            drawStone(at: move.row, col: move.col, player: move.player, animated: false, isLastMove: isLast)
         }
 
         updateStatusLabel()
@@ -456,7 +457,7 @@ class OnlineGameScene: SKScene {
     }
 
     @discardableResult
-    private func drawStone(at row: Int, col: Int, player: Player, animated: Bool) -> SKShapeNode {
+    private func drawStone(at row: Int, col: Int, player: Player, animated: Bool, isLastMove: Bool = false) -> SKShapeNode {
         let stoneRadius = cellSize * 0.43
         let stone = SKShapeNode(circleOfRadius: stoneRadius)
         stone.name = "stone_\(row)_\(col)"
@@ -544,6 +545,21 @@ class OnlineGameScene: SKScene {
         // Add colorblind marker if enabled
         AccessibilityManager.shared.addColorblindMarker(to: stone, player: player, radius: stoneRadius)
 
+        // Last move indicator - contrasting dot on the stone
+        if isLastMove {
+            let indicatorColor: SKColor = player == .black
+                ? SKColor(red: 1.0, green: 1.0, blue: 1.0, alpha: 0.9)
+                : SKColor(red: 0.1, green: 0.1, blue: 0.1, alpha: 0.9)
+
+            let indicator = SKShapeNode(circleOfRadius: stoneRadius * 0.22)
+            indicator.fillColor = indicatorColor
+            indicator.strokeColor = .clear
+            indicator.zPosition = 7
+            indicator.position = stone.position
+            indicator.name = "lastMoveIndicator"
+            stonesNode.addChild(indicator)
+        }
+
         return stone
     }
 
@@ -580,7 +596,9 @@ class OnlineGameScene: SKScene {
             pendingMovePosition = (row, col)
             SoundManager.shared.stonePlaced()
 
-            lastPlacedStoneNode = drawStone(at: row, col: col, player: player, animated: true)
+            // Remove previous last move indicator and add one to this stone
+            stonesNode.children.filter { $0.name == "lastMoveIndicator" }.forEach { $0.removeFromParent() }
+            lastPlacedStoneNode = drawStone(at: row, col: col, player: player, animated: true, isLastMove: true)
             updateStatusLabel()
             animateStatusUpdate()
 
@@ -967,7 +985,24 @@ class OnlineGameScene: SKScene {
     private func resignGame() {
         SoundManager.shared.buttonTapped()
 
-        // Check network before resigning
+        guard let view = self.view,
+              let viewController = view.window?.rootViewController else { return }
+
+        let alert = UIAlertController(
+            title: "Resign Match?",
+            message: "Are you sure you want to forfeit? This will count as a loss.",
+            preferredStyle: .alert
+        )
+
+        alert.addAction(UIAlertAction(title: "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: "Resign", style: .destructive) { [weak self] _ in
+            self?.executeResign()
+        })
+
+        viewController.present(alert, animated: true)
+    }
+
+    private func executeResign() {
         guard NetworkMonitor.shared.isConnected else {
             showOfflineBanner()
             return
@@ -1169,6 +1204,12 @@ class OnlineGameScene: SKScene {
             showOfflineBanner()
 
         case .opponentQuit:
+            // End the match so it's removed from Game Center
+            TurnBasedMatchManager.shared.endMatchForOpponentQuit { error in
+                if let error = error {
+                    print("Error ending match after opponent quit: \(error.localizedDescription ?? "Unknown")")
+                }
+            }
             showMatchEndedOverlay(
                 title: "Opponent Left",
                 message: "Your opponent has left the match.",
