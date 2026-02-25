@@ -54,7 +54,8 @@ class GameScene: SKScene {
     var isPracticeMode: Bool = false
     private var ai: GomokuAI!
     private var humanPlayer: Player = .black
-    private var isAIThinking = false
+    private var stateMachine: GKStateMachine!
+    private var isAIThinking: Bool { stateMachine?.currentState is AIThinkingState }
     private var gameGeneration: Int = 0  // Tracks game instance to prevent stale AI moves
 
     // Practice mode indicator
@@ -104,6 +105,11 @@ class GameScene: SKScene {
         // Initialize AI
         ai = GomokuAI(difficulty: aiDifficulty)
 
+        // Initialize game flow state machine (GKStateMachine)
+        let flowContext = GameFlowContext(scene: self)
+        stateMachine = GKStateMachine.gomokuStateMachine(context: flowContext)
+        stateMachine.enter(WaitingForInputState.self)
+
         // Check if restoring a saved game
         if let savedGame = restoredGame {
             // Restore from saved game
@@ -135,25 +141,13 @@ class GameScene: SKScene {
             redrawAllStones()
         }
 
-        // If AI goes first (human is white) and no moves yet, trigger AI move
-        if gameMode == .vsAI && board.currentPlayer != humanPlayer && board.getMoveHistory().isEmpty {
-            isAIThinking = true
-            showAIThinkingIndicator()
-            let wait = SKAction.wait(forDuration: 1.0)
-            let aiMove = SKAction.run { [weak self] in
-                self?.makeAIMove()
-            }
-            run(SKAction.sequence([wait, aiMove]))
-        }
-        // If it's AI's turn after restore, trigger AI move
-        else if restoredGame != nil && gameMode == .vsAI && board.currentPlayer != humanPlayer {
-            isAIThinking = true
-            showAIThinkingIndicator()
-            let wait = SKAction.wait(forDuration: 0.5)
-            let aiMove = SKAction.run { [weak self] in
-                self?.makeAIMove()
-            }
-            run(SKAction.sequence([wait, aiMove]))
+        // If AI goes first (human is white), trigger AI move via state machine
+        if gameMode == .vsAI && board.currentPlayer != humanPlayer {
+            let delay: TimeInterval = restoredGame != nil ? 0.5 : 1.0
+            let wait = SKAction.wait(forDuration: delay)
+            run(SKAction.sequence([wait, SKAction.run { [weak self] in
+                self?.stateMachine.enter(AIThinkingState.self)
+            }]))
         }
     }
 
@@ -1008,23 +1002,20 @@ class GameScene: SKScene {
                 let moveCount = board.getMoveHistory().count
                 recordGameStatistics(winner: winner)
                 celebrateWin(moveCount: moveCount)
+                stateMachine.enter(GameOverState.self)
+            } else if case .draw = board.gameState {
+                stateMachine.enter(GameOverState.self)
             } else if gameMode == .vsAI && board.currentPlayer != humanPlayer && !isAIThinking {
-                // Trigger AI move after a short delay
-                isAIThinking = true
-                showAIThinkingIndicator()
-                let wait = SKAction.wait(forDuration: 0.5)
-                let aiMove = SKAction.run { [weak self] in
-                    self?.makeAIMove()
-                }
-                run(SKAction.sequence([wait, aiMove]))
+                stateMachine.enter(AIThinkingState.self)
+            } else if !(stateMachine.currentState is WaitingForInputState) {
+                stateMachine.enter(WaitingForInputState.self)
             }
         }
     }
 
     private func makeAIMove() {
         guard gameMode == .vsAI && board.currentPlayer != humanPlayer else {
-            isAIThinking = false
-            hideAIThinkingIndicator()
+            stateMachine.enter(WaitingForInputState.self)
             return
         }
 
@@ -1042,21 +1033,50 @@ class GameScene: SKScene {
                     guard self.gameGeneration == currentGeneration else {
                         return
                     }
-                    self.hideAIThinkingIndicator()
+                    // placeStone handles the state transition at the end
                     self.placeStone(at: move.row, col: move.col)
-                    self.isAIThinking = false
                 }
             } else {
                 DispatchQueue.main.async {
                     guard self.gameGeneration == currentGeneration else {
                         return
                     }
-                    self.hideAIThinkingIndicator()
-                    self.isAIThinking = false
+                    self.stateMachine.enter(WaitingForInputState.self)
                 }
             }
         }
     }
+
+    // MARK: - GKStateMachine Callbacks
+
+    /// Called when the state machine enters WaitingForInputState.
+    func onEnterWaitingForInput() {
+        // Input is naturally accepted — nothing extra needed
+    }
+
+    /// Called when the state machine enters AIThinkingState.
+    func onEnterAIThinking() {
+        showAIThinkingIndicator()
+        let wait = SKAction.wait(forDuration: 0.5)
+        let aiMove = SKAction.run { [weak self] in
+            self?.makeAIMove()
+        }
+        run(SKAction.sequence([wait, aiMove]))
+    }
+
+    /// Called when the state machine exits AIThinkingState.
+    func onExitAIThinking() {
+        hideAIThinkingIndicator()
+    }
+
+    /// Called when the state machine enters GameOverState.
+    func onEnterGameOver() {
+        // Win / draw celebration is already handled in placeStone.
+        // Clear saved game since the game is complete.
+        GameStateManager.shared.clearSavedGame()
+    }
+
+    // MARK: - AI Thinking Indicator
 
     private func showAIThinkingIndicator() {
         hideAIThinkingIndicator() // Remove any existing indicator
@@ -3030,8 +3050,9 @@ class GameScene: SKScene {
 
         board.reset()
         stonesNode.removeAllChildren()
-        isAIThinking = false
-        hideAIThinkingIndicator()
+
+        // Reset to waiting state (handles indicator cleanup via willExit)
+        stateMachine.enter(WaitingForInputState.self)
 
         // Clear move preview and hint
         clearMovePreview()
@@ -3058,15 +3079,12 @@ class GameScene: SKScene {
         updateUndoButtonState()
         updateHintButtonState()
 
-        // If AI goes first (human is white), trigger AI move
+        // If AI goes first (human is white), trigger AI move via state machine
         if gameMode == .vsAI && board.currentPlayer != humanPlayer {
-            isAIThinking = true
-            showAIThinkingIndicator()
             let wait = SKAction.wait(forDuration: 1.0)
-            let aiMove = SKAction.run { [weak self] in
-                self?.makeAIMove()
-            }
-            run(SKAction.sequence([wait, aiMove]))
+            run(SKAction.sequence([wait, SKAction.run { [weak self] in
+                self?.stateMachine.enter(AIThinkingState.self)
+            }]))
         }
     }
 
