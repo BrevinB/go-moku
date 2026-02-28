@@ -342,6 +342,8 @@ class TurnBasedMatchManager {
                 }
             } else {
                 self.pendingMoveData = nil
+                // Refresh cached matches so menu shows correct status
+                GameCenterManager.shared.refreshActiveMatches()
                 completion(true, nil)
             }
         }
@@ -407,6 +409,7 @@ class TurnBasedMatchManager {
             if let error = error {
                 completion(MatchError.from(error))
             } else {
+                GameCenterManager.shared.refreshActiveMatches()
                 completion(nil)
             }
         }
@@ -450,6 +453,7 @@ class TurnBasedMatchManager {
             if let error = error {
                 completion(MatchError.from(error))
             } else {
+                GameCenterManager.shared.refreshActiveMatches()
                 completion(nil)
             }
         }
@@ -489,6 +493,7 @@ class TurnBasedMatchManager {
             if let error = error {
                 completion(MatchError.from(error))
             } else {
+                GameCenterManager.shared.refreshActiveMatches()
                 completion(nil)
             }
         }
