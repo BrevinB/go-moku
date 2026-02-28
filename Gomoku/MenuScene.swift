@@ -50,6 +50,9 @@ class MenuScene: SKScene {
         NotificationCenter.default.addObserver(self, selector: #selector(onMatchesRefreshed), name: .gameCenterMatchesRefreshed, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onShouldOpenMatch(_:)), name: .gameCenterShouldOpenMatch, object: nil)
 
+        // Refresh active matches to ensure menu buttons reflect current state
+        GameCenterManager.shared.refreshActiveMatches()
+
         // Show continue prompt on first launch if there's a saved game
         if !MenuScene.hasShownContinuePrompt && GameStateManager.shared.hasSavedGame {
             MenuScene.hasShownContinuePrompt = true
