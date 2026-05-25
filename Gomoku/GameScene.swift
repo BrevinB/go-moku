@@ -24,6 +24,11 @@ class GameScene: SKScene {
     private var resetButtonBackground: SKShapeNode!
     private var undoButton: SKLabelNode!
     private var undoButtonBackground: SKShapeNode!
+
+    /// Whether the player has already used their one free undo this game.
+    /// First undo per game is always free in vs-AI mode; subsequent ones cost coins.
+    private var hasUsedFreeUndo: Bool = false
+    private let paidUndoCost: Int = 25
     private var backButton: SKLabelNode!
     private var stonesNode: SKNode!
     private var boardBackground: SKShapeNode!
@@ -768,6 +773,15 @@ class GameScene: SKScene {
         let canUndo = board.canUndo()
         undoButton.alpha = canUndo ? 1.0 : 0.4
         undoButtonBackground.alpha = canUndo ? 1.0 : 0.4
+
+        // Surface the coin cost once the free undo has been spent.
+        let isZenTheme = theme.id == "zen"
+        let chargeForUndo = (gameMode == .vsAI) && !isPracticeMode && hasUsedFreeUndo
+        if chargeForUndo {
+            undoButton.text = isZenTheme ? "戻す \(paidUndoCost)🪙" : "Undo \(paidUndoCost)🪙"
+        } else {
+            undoButton.text = isZenTheme ? "戻す · Undo" : "Undo"
+        }
     }
 
     private func setupPracticeModeIndicator() {
@@ -867,9 +881,13 @@ class GameScene: SKScene {
             let stone = SKShapeNode(circleOfRadius: stoneRadius)
             let highContrast = AccessibilityManager.shared.isHighContrastEnabled
 
-            // Stone colors from theme
-            let stoneColor = player == .black ? theme.blackStoneColor : theme.whiteStoneColor
-            let highlightColor = player == .black ? theme.blackStoneHighlight : theme.whiteStoneHighlight
+            // Stone colors from skin (which falls through to the theme if no skin is set).
+            let stoneColor = player == .black
+                ? StoneSkinManager.shared.blackStoneColor(theme: theme)
+                : StoneSkinManager.shared.whiteStoneColor(theme: theme)
+            let highlightColor = player == .black
+                ? StoneSkinManager.shared.blackHighlightColor(theme: theme)
+                : StoneSkinManager.shared.whiteHighlightColor(theme: theme)
 
             stone.fillColor = stoneColor.skColor
 
@@ -1521,25 +1539,39 @@ class GameScene: SKScene {
 
         SoundManager.shared.buttonTapped()
 
-        // Capture the view as an image
-        UIGraphicsBeginImageContextWithOptions(view.bounds.size, false, UIScreen.main.scale)
-        view.drawHierarchy(in: view.bounds, afterScreenUpdates: true)
-        let screenshot = UIGraphicsGetImageFromCurrentImageContext()
-        UIGraphicsEndImageContext()
+        // Derive the winner from terminal board state (nil for in-progress/draw).
+        let winner: Player?
+        if case .won(let w) = board.gameState {
+            winner = w
+        } else {
+            winner = nil
+        }
 
-        guard let image = screenshot else { return }
+        let image = EndGameShareCard.render(
+            board: board,
+            gameMode: gameMode,
+            aiDifficulty: aiDifficulty,
+            humanPlayer: humanPlayer,
+            isPracticeMode: isPracticeMode,
+            winner: winner
+        )
+        let caption = EndGameShareCard.captionText(
+            winner: winner,
+            gameMode: gameMode,
+            humanPlayer: humanPlayer
+        )
 
-        // Present share sheet
-        let activityViewController = UIActivityViewController(activityItems: [image], applicationActivities: nil)
+        let activityViewController = UIActivityViewController(
+            activityItems: [image, caption, EndGameShareCard.appStoreURL],
+            applicationActivities: nil
+        )
 
-        // For iPad support
         if let popover = activityViewController.popoverPresentationController {
             popover.sourceView = view
             popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
             popover.permittedArrowDirections = []
         }
 
-        // Present from the view controller
         if let viewController = view.window?.rootViewController {
             viewController.present(activityViewController, animated: true)
         }
@@ -1632,8 +1664,7 @@ class GameScene: SKScene {
         // Check if undo button was tapped
         if nodes.contains(where: { $0.name == "undoButton" }) {
             if board.canUndo() {
-                animateUndoButtonPress()
-                undoLastMove()
+                handleUndoTap()
             }
             return
         }
@@ -1709,8 +1740,12 @@ class GameScene: SKScene {
 
         // Create preview stone with pulsing effect
         previewStone = SKShapeNode(circleOfRadius: stoneRadius)
-        let stoneColor = board.currentPlayer == .black ? theme.blackStoneColor : theme.whiteStoneColor
-        let highlightColor = board.currentPlayer == .black ? theme.blackStoneHighlight : theme.whiteStoneHighlight
+        let stoneColor = board.currentPlayer == .black
+            ? StoneSkinManager.shared.blackStoneColor(theme: theme)
+            : StoneSkinManager.shared.whiteStoneColor(theme: theme)
+        let highlightColor = board.currentPlayer == .black
+            ? StoneSkinManager.shared.blackHighlightColor(theme: theme)
+            : StoneSkinManager.shared.whiteHighlightColor(theme: theme)
 
         previewStone?.fillColor = stoneColor.skColor.withAlphaComponent(0.7)
         previewStone?.strokeColor = highlightColor.skColor
@@ -2892,9 +2927,13 @@ class GameScene: SKScene {
         }
 
         if let ghost = ghostStone {
-            // Style based on current player using theme colors
-            let stoneColor = board.currentPlayer == .black ? theme.blackStoneColor : theme.whiteStoneColor
-            let highlightColor = board.currentPlayer == .black ? theme.blackStoneHighlight : theme.whiteStoneHighlight
+            // Style based on current player using theme/skin colors
+            let stoneColor = board.currentPlayer == .black
+                ? StoneSkinManager.shared.blackStoneColor(theme: theme)
+                : StoneSkinManager.shared.whiteStoneColor(theme: theme)
+            let highlightColor = board.currentPlayer == .black
+                ? StoneSkinManager.shared.blackHighlightColor(theme: theme)
+                : StoneSkinManager.shared.whiteHighlightColor(theme: theme)
 
             ghost.fillColor = stoneColor.skColor.withAlphaComponent(0.4)
             ghost.strokeColor = highlightColor.skColor.withAlphaComponent(0.6)
@@ -2936,6 +2975,31 @@ class GameScene: SKScene {
         let scaleUp = SKAction.scale(to: 1.0, duration: 0.1)
         let sequence = SKAction.sequence([scaleDown, scaleUp])
         shareButtonBackground?.run(sequence)
+    }
+
+    /// Vs-AI undos beyond the first cost coins. Practice and 2-player modes stay free.
+    private func handleUndoTap() {
+        let chargeForUndo = (gameMode == .vsAI) && !isPracticeMode && hasUsedFreeUndo
+
+        if chargeForUndo {
+            guard CoinManager.shared.spendCoins(paidUndoCost) else {
+                flashInsufficientCoins()
+                return
+            }
+        }
+
+        animateUndoButtonPress()
+        undoLastMove()
+        hasUsedFreeUndo = true
+        updateUndoButtonState()
+    }
+
+    private func flashInsufficientCoins() {
+        SoundManager.shared.hapticLight()
+        let shakeLeft = SKAction.moveBy(x: -6, y: 0, duration: 0.05)
+        let shakeRight = SKAction.moveBy(x: 12, y: 0, duration: 0.05)
+        let shakeBack = SKAction.moveBy(x: -6, y: 0, duration: 0.05)
+        undoButtonBackground.run(SKAction.sequence([shakeLeft, shakeRight, shakeBack]))
     }
 
     private func undoLastMove() {
@@ -3032,6 +3096,7 @@ class GameScene: SKScene {
         stonesNode.removeAllChildren()
         isAIThinking = false
         hideAIThinkingIndicator()
+        hasUsedFreeUndo = false
 
         // Clear move preview and hint
         clearMovePreview()
@@ -3093,8 +3158,12 @@ class GameScene: SKScene {
             let stoneRadius = cellSize * 0.43
             let stone = SKShapeNode(circleOfRadius: stoneRadius)
 
-            let stoneColor = player == .black ? theme.blackStoneColor : theme.whiteStoneColor
-            let highlightColor = player == .black ? theme.blackStoneHighlight : theme.whiteStoneHighlight
+            let stoneColor = player == .black
+                ? StoneSkinManager.shared.blackStoneColor(theme: theme)
+                : StoneSkinManager.shared.whiteStoneColor(theme: theme)
+            let highlightColor = player == .black
+                ? StoneSkinManager.shared.blackHighlightColor(theme: theme)
+                : StoneSkinManager.shared.whiteHighlightColor(theme: theme)
 
             stone.fillColor = stoneColor.skColor
 

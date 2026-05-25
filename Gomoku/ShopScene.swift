@@ -423,6 +423,14 @@ class ShopScene: SKScene {
         currentY = setupThemeSection(at: currentY)
         currentY -= sectionSpacing
 
+        // Stone Skins Section
+        currentY = setupStoneSkinSection(at: currentY)
+        currentY -= sectionSpacing
+
+        // Gift / Redeem Section
+        currentY = setupGiftSection(at: currentY)
+        currentY -= sectionSpacing
+
         // Legal Links Section
         currentY = setupLegalSection(at: currentY)
         currentY -= 50 // Bottom padding
@@ -1186,6 +1194,30 @@ class ShopScene: SKScene {
                 }
             }
 
+            if name.hasPrefix("skin_") {
+                let skinId = String(name.dropFirst("skin_".count))
+                if let skin = StoneSkin.allSkins.first(where: { $0.id == skinId }) {
+                    SoundManager.shared.buttonTapped()
+                    handleStoneSkinTap(skin)
+                    return
+                }
+            }
+
+            if name.hasPrefix("gift_send_") {
+                let amountStr = String(name.dropFirst("gift_send_".count))
+                if let amount = Int(amountStr) {
+                    SoundManager.shared.buttonTapped()
+                    handleSendGiftTap(amount: amount)
+                    return
+                }
+            }
+
+            if name == "redeemGift" {
+                SoundManager.shared.buttonTapped()
+                showRedeemPrompt()
+                return
+            }
+
             if name == "privacyPolicy" {
                 SoundManager.shared.buttonTapped()
                 openURL("https://brevinb.github.io/go-moku-legal/privacy-policy.html")
@@ -1230,6 +1262,356 @@ class ShopScene: SKScene {
         } else {
             showInsufficientCoins(needed: pack.coinCost, for: "hint pack")
         }
+    }
+
+    // MARK: - Gift / Redeem Section
+
+    private func setupGiftSection(at startY: CGFloat) -> CGFloat {
+        var currentY = startY
+
+        let header = createSectionHeader(
+            title: isZenTheme ? "コインギフト" : "Gift Coins",
+            subtitle: isZenTheme ? "Gift Coins · Send to a friend" : "Send to a friend",
+            icon: "🎁",
+            at: CGPoint(x: size.width / 2, y: currentY)
+        )
+        scrollContainer.addChild(header)
+        currentY -= 50
+
+        // Suggested-amount buttons in a 2x2 grid
+        let amounts = GiftManager.suggestedAmounts
+        let cardWidth: CGFloat = 155
+        let cardHeight: CGFloat = 56
+        let hSpacing: CGFloat = 12
+        let vSpacing: CGFloat = 10
+        let cardsPerRow = 2
+        let totalRowWidth = CGFloat(cardsPerRow) * cardWidth + CGFloat(cardsPerRow - 1) * hSpacing
+        let startX = (size.width - totalRowWidth) / 2 + cardWidth / 2
+
+        for (index, amount) in amounts.enumerated() {
+            let row = index / cardsPerRow
+            let col = index % cardsPerRow
+            let x = startX + CGFloat(col) * (cardWidth + hSpacing)
+            let y = currentY - cardHeight / 2 - CGFloat(row) * (cardHeight + vSpacing)
+
+            let card = createGiftSendCard(amount: amount, at: CGPoint(x: x, y: y), size: CGSize(width: cardWidth, height: cardHeight))
+            scrollContainer.addChild(card)
+            themeNodes.append(card)
+        }
+        let rows = (amounts.count + cardsPerRow - 1) / cardsPerRow
+        currentY -= CGFloat(rows) * (cardHeight + vSpacing) + 14
+
+        // Redeem-code button
+        let redeemCard = createRedeemCard(
+            at: CGPoint(x: size.width / 2, y: currentY - 26),
+            size: CGSize(width: cardWidth * 2 + hSpacing, height: 56)
+        )
+        scrollContainer.addChild(redeemCard)
+        themeNodes.append(redeemCard)
+        currentY -= 70
+
+        return currentY
+    }
+
+    private func createGiftSendCard(amount: Int, at position: CGPoint, size cardSize: CGSize) -> SKNode {
+        let container = SKNode()
+        container.position = position
+
+        let canAfford = CoinManager.shared.balance >= amount
+
+        let card = SKShapeNode(rectOf: cardSize, cornerRadius: 8)
+        card.fillColor = theme.innerBoardColor.skColor
+        card.strokeColor = canAfford ? accentColor.withAlphaComponent(0.5) : secondaryTextColor.withAlphaComponent(0.3)
+        card.lineWidth = 1
+        card.name = "gift_send_\(amount)"
+        container.addChild(card)
+
+        let textColor = getContrastingTextColor(for: theme.innerBoardColor.skColor)
+        let label = SKLabelNode(fontNamed: uiFontBold)
+        label.text = "🎁 Gift 🪙 \(amount)"
+        label.fontSize = 16
+        label.fontColor = canAfford ? textColor : textColor.withAlphaComponent(0.5)
+        label.verticalAlignmentMode = .center
+        label.name = "gift_send_\(amount)"
+        container.addChild(label)
+
+        return container
+    }
+
+    private func createRedeemCard(at position: CGPoint, size cardSize: CGSize) -> SKNode {
+        let container = SKNode()
+        container.position = position
+
+        let card = SKShapeNode(rectOf: cardSize, cornerRadius: 8)
+        card.fillColor = theme.innerBoardColor.skColor
+        card.strokeColor = selectedBlue.withAlphaComponent(0.6)
+        card.lineWidth = 1.5
+        card.name = "redeemGift"
+        container.addChild(card)
+
+        let textColor = getContrastingTextColor(for: theme.innerBoardColor.skColor)
+        let label = SKLabelNode(fontNamed: uiFontBold)
+        label.text = isZenTheme ? "🎟 ギフトコードを引き換える" : "🎟  Redeem Gift Code"
+        label.fontSize = 16
+        label.fontColor = textColor
+        label.verticalAlignmentMode = .center
+        label.name = "redeemGift"
+        container.addChild(label)
+
+        return container
+    }
+
+    private func handleSendGiftTap(amount: Int) {
+        guard CoinManager.shared.balance >= amount else {
+            showInsufficientCoins(needed: amount, for: "gift")
+            return
+        }
+        guard let vc = view?.window?.rootViewController else { return }
+
+        let alert = UIAlertController(
+            title: isZenTheme ? "\(amount)コインを贈る" : "Gift \(amount) coins?",
+            message: isZenTheme
+                ? "コードを共有します。受け取った人だけが引き換えできます。"
+                : "We'll spend \(amount) coins and create a code to share. Only the recipient who pastes it gets the coins.",
+            preferredStyle: .alert
+        )
+        alert.addAction(UIAlertAction(title: isZenTheme ? "キャンセル" : "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: isZenTheme ? "贈る" : "Send", style: .default) { [weak self] _ in
+            self?.createAndShareGift(amount: amount)
+        })
+        vc.present(alert, animated: true)
+    }
+
+    private func createAndShareGift(amount: Int) {
+        let code: String
+        do {
+            code = try GiftManager.shared.createGift(amount: amount)
+        } catch {
+            showError(error.localizedDescription)
+            return
+        }
+
+        let message = "🎁 I just sent you \(amount) Gomoku coins! Open Gomoku, go to Shop → Redeem Gift Code, and paste: \(code)\n\n\(EndGameShareCard.appStoreURL.absoluteString)"
+
+        guard let vc = view?.window?.rootViewController else { return }
+        let activity = UIActivityViewController(activityItems: [message], applicationActivities: nil)
+        if let popover = activity.popoverPresentationController, let view = self.view {
+            popover.sourceView = view
+            popover.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+        vc.present(activity, animated: true)
+    }
+
+    private func showRedeemPrompt() {
+        guard let vc = view?.window?.rootViewController else { return }
+
+        let alert = UIAlertController(
+            title: isZenTheme ? "ギフトコードを引き換える" : "Redeem Gift Code",
+            message: isZenTheme ? "GMK-で始まるコードを貼り付け" : "Paste the GMK-XXXX-XXXX-XXXX-XXXX code your friend sent you.",
+            preferredStyle: .alert
+        )
+        alert.addTextField { field in
+            field.placeholder = "GMK-XXXX-XXXX-XXXX-XXXX"
+            field.autocapitalizationType = .allCharacters
+            field.autocorrectionType = .no
+        }
+        alert.addAction(UIAlertAction(title: isZenTheme ? "キャンセル" : "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: isZenTheme ? "引き換える" : "Redeem", style: .default) { [weak self] _ in
+            let code = alert.textFields?.first?.text ?? ""
+            self?.attemptRedeem(code: code)
+        })
+        vc.present(alert, animated: true)
+    }
+
+    private func attemptRedeem(code: String) {
+        do {
+            let amount = try GiftManager.shared.redeem(code: code)
+            guard let vc = view?.window?.rootViewController else { return }
+            let success = UIAlertController(
+                title: isZenTheme ? "受け取りました！" : "Coins Received!",
+                message: "+\(amount) 🪙",
+                preferredStyle: .alert
+            )
+            success.addAction(UIAlertAction(title: "OK", style: .default))
+            vc.present(success, animated: true)
+            SoundManager.shared.gameWon()
+        } catch {
+            showError(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Stone Skin Section
+
+    private func setupStoneSkinSection(at startY: CGFloat) -> CGFloat {
+        var currentY = startY
+
+        let headerContainer = createSectionHeader(
+            title: isZenTheme ? "石のスキン" : "Stone Skins",
+            subtitle: isZenTheme ? "Stone Skins" : nil,
+            icon: "⚫",
+            at: CGPoint(x: size.width / 2, y: currentY)
+        )
+        scrollContainer.addChild(headerContainer)
+        currentY -= 35
+
+        let skins = StoneSkin.allSkins
+        let cardWidth: CGFloat = 155
+        let cardHeight: CGFloat = 90
+        let horizontalSpacing: CGFloat = 12
+        let verticalSpacing: CGFloat = 12
+        let cardsPerRow = 2
+        let totalRowWidth = CGFloat(cardsPerRow) * cardWidth + CGFloat(cardsPerRow - 1) * horizontalSpacing
+        let startX = (size.width - totalRowWidth) / 2 + cardWidth / 2
+
+        var lowestY = currentY
+
+        for (index, skin) in skins.enumerated() {
+            let row = index / cardsPerRow
+            let col = index % cardsPerRow
+            let x = startX + CGFloat(col) * (cardWidth + horizontalSpacing)
+            let y = currentY - cardHeight / 2 - CGFloat(row) * (cardHeight + verticalSpacing)
+
+            let card = createStoneSkinCard(skin: skin, at: CGPoint(x: x, y: y), size: CGSize(width: cardWidth, height: cardHeight))
+            card.name = "skin_\(skin.id)"
+            scrollContainer.addChild(card)
+            themeNodes.append(card)
+
+            lowestY = min(lowestY, y - cardHeight / 2)
+        }
+
+        return lowestY
+    }
+
+    private func createStoneSkinCard(skin: StoneSkin, at position: CGPoint, size cardSize: CGSize) -> SKNode {
+        let container = SKNode()
+        container.position = position
+
+        let isUnlocked = StoneSkinManager.shared.isUnlocked(skin)
+        let isSelected = StoneSkinManager.shared.currentSkin.id == skin.id
+        let canAfford = StoneSkinManager.shared.canAfford(skin)
+
+        // Resolve preview colors. Default skin shows the active theme's stones.
+        let black = (skin.blackStone ?? theme.blackStoneColor).skColor
+        let blackHi = (skin.blackHighlight ?? theme.blackStoneHighlight).skColor
+        let white = (skin.whiteStone ?? theme.whiteStoneColor).skColor
+        let whiteHi = (skin.whiteHighlight ?? theme.whiteStoneHighlight).skColor
+
+        // Shadow
+        let shadow = SKShapeNode(rectOf: CGSize(width: cardSize.width - 4, height: cardSize.height - 4), cornerRadius: 8)
+        shadow.fillColor = SKColor.black.withAlphaComponent(isSelected ? 0.15 : 0.08)
+        shadow.strokeColor = .clear
+        shadow.position = CGPoint(x: 2, y: -2)
+        shadow.zPosition = -1
+        container.addChild(shadow)
+
+        // Card
+        let card = SKShapeNode(rectOf: cardSize, cornerRadius: 8)
+        card.fillColor = theme.innerBoardColor.skColor
+        if isSelected {
+            card.strokeColor = selectedBlue
+            card.lineWidth = 2.5
+        } else if !isUnlocked && !canAfford {
+            card.strokeColor = secondaryTextColor.withAlphaComponent(0.3)
+            card.lineWidth = 1
+        } else {
+            card.strokeColor = accentColor.withAlphaComponent(0.4)
+            card.lineWidth = 1
+        }
+        card.name = "skin_\(skin.id)"
+        container.addChild(card)
+
+        // Stones preview (larger, centered toward top)
+        let blackStone = SKShapeNode(circleOfRadius: 13)
+        blackStone.fillColor = black
+        blackStone.strokeColor = blackHi.withAlphaComponent(0.6)
+        blackStone.lineWidth = 1
+        blackStone.position = CGPoint(x: -16, y: 15)
+        container.addChild(blackStone)
+
+        let whiteStone = SKShapeNode(circleOfRadius: 13)
+        whiteStone.fillColor = white
+        whiteStone.strokeColor = whiteHi.withAlphaComponent(0.6)
+        whiteStone.lineWidth = 1
+        whiteStone.position = CGPoint(x: 16, y: 15)
+        container.addChild(whiteStone)
+
+        // Name
+        let textColor = getContrastingTextColor(for: theme.innerBoardColor.skColor)
+        let nameLabel = SKLabelNode(fontNamed: uiFontBold)
+        nameLabel.text = skin.name
+        nameLabel.fontSize = 12
+        nameLabel.fontColor = textColor
+        nameLabel.position = CGPoint(x: 0, y: -16)
+        container.addChild(nameLabel)
+
+        // Status / price
+        if isUnlocked {
+            if isSelected {
+                let badge = SKShapeNode(rectOf: CGSize(width: 55, height: 18), cornerRadius: 9)
+                badge.fillColor = selectedBlue
+                badge.strokeColor = .clear
+                badge.position = CGPoint(x: 0, y: -34)
+                container.addChild(badge)
+
+                let badgeLabel = SKLabelNode(fontNamed: uiFont)
+                badgeLabel.text = isZenTheme ? "選択中" : "Active"
+                badgeLabel.fontSize = 9
+                badgeLabel.fontColor = .white
+                badgeLabel.verticalAlignmentMode = .center
+                badgeLabel.position = CGPoint(x: 0, y: -34)
+                container.addChild(badgeLabel)
+            } else {
+                let badgeLabel = SKLabelNode(fontNamed: uiFont)
+                badgeLabel.text = isZenTheme ? "タップで適用" : "Tap to apply"
+                badgeLabel.fontSize = 9
+                badgeLabel.fontColor = textColor.withAlphaComponent(0.7)
+                badgeLabel.position = CGPoint(x: 0, y: -34)
+                container.addChild(badgeLabel)
+            }
+        } else {
+            let priceLabel = SKLabelNode(fontNamed: uiFontBold)
+            priceLabel.text = "🪙 \(skin.price)"
+            priceLabel.fontSize = 11
+            priceLabel.fontColor = canAfford ? gold : textColor.withAlphaComponent(0.5)
+            priceLabel.position = CGPoint(x: 0, y: -34)
+            priceLabel.name = "skin_\(skin.id)"
+            container.addChild(priceLabel)
+        }
+
+        return container
+    }
+
+    private func handleStoneSkinTap(_ skin: StoneSkin) {
+        if StoneSkinManager.shared.isUnlocked(skin) {
+            if StoneSkinManager.shared.currentSkin.id != skin.id {
+                StoneSkinManager.shared.apply(skin)
+                reloadSceneWithNewTheme(showingToast: "\(skin.name) Applied!")
+            }
+        } else if StoneSkinManager.shared.canAfford(skin) {
+            showStoneSkinPurchaseConfirmation(for: skin)
+        } else {
+            showInsufficientCoins(needed: skin.price, for: "stone skin")
+        }
+    }
+
+    private func showStoneSkinPurchaseConfirmation(for skin: StoneSkin) {
+        guard let vc = view?.window?.rootViewController else { return }
+
+        let title = isZenTheme ? "\(skin.name)を購入" : "Purchase \(skin.name)"
+        let message = isZenTheme
+            ? "このスキンは\(skin.price)コインです。"
+            : "This stone skin costs \(skin.price) coins."
+
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: isZenTheme ? "キャンセル" : "Cancel", style: .cancel))
+        alert.addAction(UIAlertAction(title: isZenTheme ? "購入" : "Purchase", style: .default) { [weak self] _ in
+            if StoneSkinManager.shared.purchase(skin) {
+                StoneSkinManager.shared.apply(skin)
+                self?.reloadSceneWithNewTheme(showingToast: "\(skin.name) Unlocked!", celebration: true)
+            }
+        })
+        vc.present(alert, animated: true)
     }
 
     private func handleThemeTap(_ boardTheme: BoardTheme) {

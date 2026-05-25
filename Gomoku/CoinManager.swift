@@ -21,14 +21,28 @@ class CoinManager {
     private let balanceKey = "coinBalance"
     private let starterCoins = 250  // New players start with some coins
 
+    // Daily-login bonus
+    private let lastClaimDateKey = "dailyBonusLastClaim"
+    private let loginStreakKey = "dailyBonusStreak"
+    private let dailyBase = 50
+    private let dailyPerStreak = 25
+    private let dailyCap = 500
+
     private(set) var balance: Int {
         didSet {
             saveBalance()
         }
     }
 
+    private(set) var loginStreak: Int {
+        didSet {
+            UserDefaults.standard.set(loginStreak, forKey: loginStreakKey)
+        }
+    }
+
     private init() {
-        // Load balance from UserDefaults, or set starter coins for new players
+        // Initialize all stored properties before any method calls.
+        loginStreak = UserDefaults.standard.integer(forKey: loginStreakKey)
         if UserDefaults.standard.object(forKey: balanceKey) != nil {
             balance = UserDefaults.standard.integer(forKey: balanceKey)
         } else {
@@ -96,6 +110,52 @@ class CoinManager {
     func addCoins(_ amount: Int) {
         guard amount > 0 else { return }
         balance += amount
+        NotificationCenter.default.post(name: .coinsUpdated, object: nil)
+    }
+
+    // MARK: - Daily Login Bonus
+
+    struct DailyBonusResult {
+        let coinsAwarded: Int
+        let streak: Int
+        let isStreakContinuation: Bool
+    }
+
+    var isDailyBonusAvailable: Bool {
+        guard let last = lastClaimDate else { return true }
+        return !Calendar.current.isDateInToday(last)
+    }
+
+    var lastClaimDate: Date? {
+        UserDefaults.standard.object(forKey: lastClaimDateKey) as? Date
+    }
+
+    /// Award today's coin bonus. Returns nil if already claimed today.
+    /// Streak increments on consecutive calendar days; resets to 1 after a gap.
+    @discardableResult
+    func claimDailyBonusIfAvailable() -> DailyBonusResult? {
+        let now = Date()
+        let calendar = Calendar.current
+
+        if let last = lastClaimDate, calendar.isDateInToday(last) {
+            return nil
+        }
+
+        let isContinuation: Bool
+        if let last = lastClaimDate, let yesterday = calendar.date(byAdding: .day, value: -1, to: now) {
+            isContinuation = calendar.isDate(last, inSameDayAs: yesterday)
+        } else {
+            isContinuation = false
+        }
+
+        loginStreak = isContinuation ? loginStreak + 1 : 1
+
+        let reward = min(dailyBase + (loginStreak - 1) * dailyPerStreak, dailyCap)
+        balance += reward
+        UserDefaults.standard.set(now, forKey: lastClaimDateKey)
+        NotificationCenter.default.post(name: .coinsUpdated, object: nil)
+
+        return DailyBonusResult(coinsAwarded: reward, streak: loginStreak, isStreakContinuation: isContinuation)
     }
 
     // MARK: - Debug/Testing

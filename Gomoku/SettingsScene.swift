@@ -213,7 +213,28 @@ class SettingsScene: SKScene {
             isEnabled: SoundManager.shared.isHapticsEnabled(),
             toggleName: "hapticsToggle"
         )
+        currentY -= rowSpacing
+
+        // Tap-to-preview rows so users can verify sound/haptic feel before committing.
+        createActionRow(
+            title: isZenTheme ? "音をテスト" : "Test Sound",
+            subtitle: isZenTheme ? "Test Sound · タップして再生" : "Tap to play sample sounds",
+            yPosition: currentY,
+            actionName: "testSound"
+        )
+        currentY -= rowSpacing
+
+        createActionRow(
+            title: isZenTheme ? "振動をテスト" : "Test Haptic",
+            subtitle: isZenTheme ? "Test Haptic · 弱・中・強" : "Light, medium, heavy",
+            yPosition: currentY,
+            actionName: "testHaptic"
+        )
         currentY -= 70
+
+        // Active theme preview
+        addThemePreview(yPosition: currentY)
+        currentY -= 130
 
         // Accessibility section header
         let accessibilityLabel = SKLabelNode(fontNamed: uiFont)
@@ -373,6 +394,130 @@ class SettingsScene: SKScene {
         }
     }
     #endif
+
+    /// A row without a toggle — taps fire `actionName` so the user can preview an effect.
+    private func createActionRow(title: String, subtitle: String?, yPosition: CGFloat, actionName: String) {
+        let cardWidth: CGFloat = 320
+        let cardHeight: CGFloat = subtitle != nil ? 75 : 60
+
+        let card = SKShapeNode(rectOf: CGSize(width: cardWidth, height: cardHeight), cornerRadius: 8)
+        card.fillColor = SKColor.white.withAlphaComponent(0.7)
+        card.strokeColor = accentColor.withAlphaComponent(0.3)
+        card.lineWidth = 1
+        card.position = CGPoint(x: size.width / 2, y: yPosition)
+        card.name = actionName
+        scrollNode.addChild(card)
+
+        let accent = SKShapeNode(rectOf: CGSize(width: 3, height: cardHeight - 16), cornerRadius: 1.5)
+        accent.fillColor = toggleOnColor
+        accent.strokeColor = .clear
+        accent.position = CGPoint(x: -cardWidth/2 + 10, y: 0)
+        accent.name = actionName
+        card.addChild(accent)
+
+        let titleLabel = SKLabelNode(fontNamed: uiFont)
+        titleLabel.text = title
+        titleLabel.fontSize = 18
+        titleLabel.fontColor = primaryTextColor
+        titleLabel.horizontalAlignmentMode = .left
+        titleLabel.verticalAlignmentMode = .center
+        titleLabel.position = CGPoint(x: -cardWidth/2 + 24, y: subtitle != nil ? 8 : 0)
+        titleLabel.name = actionName
+        card.addChild(titleLabel)
+
+        if let subtitle = subtitle {
+            let subtitleLabel = SKLabelNode(fontNamed: uiFont)
+            subtitleLabel.text = subtitle
+            subtitleLabel.fontSize = 11
+            subtitleLabel.fontColor = secondaryTextColor
+            subtitleLabel.horizontalAlignmentMode = .left
+            subtitleLabel.verticalAlignmentMode = .center
+            subtitleLabel.position = CGPoint(x: -cardWidth/2 + 24, y: -12)
+            subtitleLabel.name = actionName
+            card.addChild(subtitleLabel)
+        }
+
+        // Chevron hint
+        let chevron = SKLabelNode(fontNamed: uiFont)
+        chevron.text = "▸"
+        chevron.fontSize = 18
+        chevron.fontColor = secondaryTextColor.withAlphaComponent(0.6)
+        chevron.verticalAlignmentMode = .center
+        chevron.horizontalAlignmentMode = .right
+        chevron.position = CGPoint(x: cardWidth/2 - 18, y: 0)
+        chevron.name = actionName
+        card.addChild(chevron)
+    }
+
+    /// Small read-only swatch showing the current theme's board + two stones, so users
+    /// see what they have selected without having to start a game.
+    private func addThemePreview(yPosition: CGFloat) {
+        let cardWidth: CGFloat = 320
+        let cardHeight: CGFloat = 110
+
+        let card = SKShapeNode(rectOf: CGSize(width: cardWidth, height: cardHeight), cornerRadius: 8)
+        card.fillColor = SKColor.white.withAlphaComponent(0.7)
+        card.strokeColor = accentColor.withAlphaComponent(0.3)
+        card.lineWidth = 1
+        card.position = CGPoint(x: size.width / 2, y: yPosition)
+        scrollNode.addChild(card)
+
+        let titleLabel = SKLabelNode(fontNamed: uiFont)
+        titleLabel.text = isZenTheme ? "現在のテーマ: \(theme.name)" : "Current theme: \(theme.name)"
+        titleLabel.fontSize = 14
+        titleLabel.fontColor = secondaryTextColor
+        titleLabel.horizontalAlignmentMode = .left
+        titleLabel.verticalAlignmentMode = .center
+        titleLabel.position = CGPoint(x: -cardWidth/2 + 18, y: cardHeight/2 - 18)
+        card.addChild(titleLabel)
+
+        // Tiny board swatch
+        let swatchSize: CGFloat = 70
+        let swatch = SKShapeNode(rectOf: CGSize(width: swatchSize, height: swatchSize), cornerRadius: 8)
+        swatch.fillColor = theme.innerBoardColor.skColor
+        swatch.strokeColor = theme.boardStrokeColor.skColor
+        swatch.lineWidth = 1.5
+        swatch.position = CGPoint(x: -cardWidth/2 + 50, y: -8)
+        card.addChild(swatch)
+
+        // Mini grid lines
+        for offset in [CGFloat(-20), 0, 20] {
+            let v = SKShapeNode(rectOf: CGSize(width: 1, height: swatchSize - 14))
+            v.fillColor = theme.gridLineColor.skColor
+            v.strokeColor = .clear
+            v.position = CGPoint(x: offset, y: 0)
+            swatch.addChild(v)
+            let h = SKShapeNode(rectOf: CGSize(width: swatchSize - 14, height: 1))
+            h.fillColor = theme.gridLineColor.skColor
+            h.strokeColor = .clear
+            h.position = CGPoint(x: 0, y: offset)
+            swatch.addChild(h)
+        }
+
+        // Two stones at center for the player to recognize their look
+        let blackStone = SKShapeNode(circleOfRadius: 9)
+        blackStone.fillColor = theme.blackStoneColor.skColor
+        blackStone.strokeColor = .clear
+        blackStone.position = CGPoint(x: -10, y: 0)
+        swatch.addChild(blackStone)
+
+        let whiteStone = SKShapeNode(circleOfRadius: 9)
+        whiteStone.fillColor = theme.whiteStoneColor.skColor
+        whiteStone.strokeColor = SKColor.black.withAlphaComponent(0.2)
+        whiteStone.lineWidth = 0.5
+        whiteStone.position = CGPoint(x: 10, y: 0)
+        swatch.addChild(whiteStone)
+
+        // Footer text
+        let hint = SKLabelNode(fontNamed: uiFont)
+        hint.text = isZenTheme ? "ショップで変更 · Change in Shop" : "Change themes in the Shop"
+        hint.fontSize = 11
+        hint.fontColor = secondaryTextColor.withAlphaComponent(0.8)
+        hint.horizontalAlignmentMode = .left
+        hint.verticalAlignmentMode = .center
+        hint.position = CGPoint(x: -cardWidth/2 + 105, y: -8)
+        card.addChild(hint)
+    }
 
     private func createSettingRow(title: String, subtitle: String?, yPosition: CGFloat, isEnabled: Bool, toggleName: String) {
         let cardWidth: CGFloat = 320
@@ -586,6 +731,25 @@ class SettingsScene: SKScene {
                 return
             }
 
+            if nodeName == "testSound" {
+                animateActionRow(named: nodeName)
+                SoundManager.shared.playButton()
+                let stone = SKAction.run { SoundManager.shared.stonePlaced() }
+                let pause = SKAction.wait(forDuration: 0.4)
+                let win = SKAction.run { SoundManager.shared.gameWon() }
+                self.run(SKAction.sequence([SKAction.wait(forDuration: 0.2), stone, pause, win]))
+                return
+            }
+
+            if nodeName == "testHaptic" {
+                animateActionRow(named: nodeName)
+                SoundManager.shared.hapticLight()
+                let medium = SKAction.run { SoundManager.shared.hapticMedium() }
+                let heavy = SKAction.run { SoundManager.shared.hapticHeavy() }
+                self.run(SKAction.sequence([SKAction.wait(forDuration: 0.25), medium, SKAction.wait(forDuration: 0.25), heavy]))
+                return
+            }
+
             #if DEBUG
             if nodeName == "debug_add100" {
                 CoinManager.shared.addCoins(100)
@@ -618,6 +782,14 @@ class SettingsScene: SKScene {
                 return
             }
             #endif
+        }
+    }
+
+    private func animateActionRow(named name: String) {
+        scrollNode.enumerateChildNodes(withName: name) { node, _ in
+            let scaleDown = SKAction.scale(to: 0.97, duration: 0.08)
+            let scaleUp = SKAction.scale(to: 1.0, duration: 0.12)
+            node.run(SKAction.sequence([scaleDown, scaleUp]))
         }
     }
 

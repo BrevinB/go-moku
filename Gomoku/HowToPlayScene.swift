@@ -9,6 +9,11 @@ import SpriteKit
 
 class HowToPlayScene: SKScene {
 
+    /// When true, the scene was presented as forced first-launch onboarding rather than
+    /// from the menu. Changes the exit-button label so it doesn't say "Back to Menu"
+    /// when the user has never been to the menu yet.
+    var isOnboardingMode: Bool = false
+
     // Theme reference
     private var theme: BoardTheme { ThemeManager.shared.currentTheme }
     private var isZenTheme: Bool { theme.id == "zen" }
@@ -1131,12 +1136,19 @@ class HowToPlayScene: SKScene {
         container.addChild(bg)
 
         let label = SKLabelNode(fontNamed: uiFont)
-        label.text = isZenTheme ? "← Back · 戻る" : "← Back to Menu"
+        label.text = backButtonText
         label.fontSize = 16
         label.fontColor = primaryTextColor
         label.verticalAlignmentMode = .center
         label.name = "backButton"
         container.addChild(label)
+    }
+
+    private var backButtonText: String {
+        if isOnboardingMode {
+            return isZenTheme ? "始める · Start Playing" : "Start Playing →"
+        }
+        return isZenTheme ? "← Back · 戻る" : "← Back to Menu"
     }
 
     private func setupPageIndicator() {

@@ -132,6 +132,9 @@ class StatisticsManager {
         // Award coins for the win
         let coinsEarned = CoinManager.shared.earnCoins(for: .win, difficulty: difficulty)
 
+        // Bump the review-prompt counter; MenuScene will trigger the actual prompt on return.
+        ReviewPromptManager.shared.recordAIWin()
+
         // Report to Game Center
         GameCenterManager.shared.submitAllScores(stats: stats)
         GameCenterManager.shared.checkAndUnlockAchievements(

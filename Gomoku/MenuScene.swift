@@ -18,6 +18,12 @@ class MenuScene: SKScene {
     // Track if we've shown the continue prompt this session
     private static var hasShownContinuePrompt = false
 
+    // Track if we've shown the daily bonus this session
+    private static var hasShownDailyBonus = false
+
+    // First-launch onboarding key
+    private static let onboardedKey = "hasOnboarded"
+
     // Practice mode toggle state
     private var isPracticeModeEnabled = false
 
@@ -50,6 +56,32 @@ class MenuScene: SKScene {
         NotificationCenter.default.addObserver(self, selector: #selector(onMatchesRefreshed), name: .gameCenterMatchesRefreshed, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(onShouldOpenMatch(_:)), name: .gameCenterShouldOpenMatch, object: nil)
 
+        // First-launch onboarding takes priority over any other prompts
+        if !UserDefaults.standard.bool(forKey: MenuScene.onboardedKey) {
+            UserDefaults.standard.set(true, forKey: MenuScene.onboardedKey)
+            // Suppress the daily bonus popup for the rest of this session so the user
+            // isn't hit with another modal the moment they finish onboarding. The bonus
+            // becomes available again on the next cold launch.
+            MenuScene.hasShownDailyBonus = true
+            let wait = SKAction.wait(forDuration: 0.4)
+            let go = SKAction.run { [weak self] in
+                self?.showHowToPlay(isOnboarding: true)
+            }
+            run(SKAction.sequence([wait, go]))
+            return
+        }
+
+        // Daily login bonus — show once per session, before continue prompt
+        if !MenuScene.hasShownDailyBonus && CoinManager.shared.isDailyBonusAvailable {
+            MenuScene.hasShownDailyBonus = true
+            let wait = SKAction.wait(forDuration: 0.3)
+            let showPrompt = SKAction.run { [weak self] in
+                self?.showDailyBonusPrompt()
+            }
+            run(SKAction.sequence([wait, showPrompt]))
+            return
+        }
+
         // Show continue prompt on first launch if there's a saved game
         if !MenuScene.hasShownContinuePrompt && GameStateManager.shared.hasSavedGame {
             MenuScene.hasShownContinuePrompt = true
@@ -59,7 +91,22 @@ class MenuScene: SKScene {
                 self?.showContinuePrompt()
             }
             run(SKAction.sequence([wait, showPrompt]))
+            return
         }
+
+        // No other modals — try a review prompt after a short delay so the menu
+        // settles first. The manager handles the "3 wins / once per version" gate.
+        maybeRequestReview(after: 1.2)
+    }
+
+    private func maybeRequestReview(after delay: TimeInterval) {
+        guard ReviewPromptManager.shared.shouldPrompt else { return }
+        let wait = SKAction.wait(forDuration: delay)
+        let prompt = SKAction.run { [weak self] in
+            let windowScene = self?.view?.window?.windowScene
+            ReviewPromptManager.shared.requestPromptIfAppropriate(in: windowScene)
+        }
+        run(SKAction.sequence([wait, prompt]))
     }
 
     deinit {
@@ -358,6 +405,42 @@ class MenuScene: SKScene {
     private func setupHeader() {
         setupCoinDisplay()
         setupTrophyButton()
+        setupFriendsRankTile()
+    }
+
+    private func setupFriendsRankTile() {
+        let container = SKNode()
+        container.position = CGPoint(x: size.width / 2, y: size.height - 245)
+        container.zPosition = 15
+        container.name = "friendsRankTile"
+        container.alpha = 0
+        addChild(container)
+
+        let bg = SKShapeNode(rectOf: CGSize(width: 220, height: 36), cornerRadius: 18)
+        bg.fillColor = SKColor.white.withAlphaComponent(0.85)
+        bg.strokeColor = bamboo.withAlphaComponent(0.4)
+        bg.lineWidth = 1
+        bg.name = "friendsRankTile"
+        container.addChild(bg)
+
+        let label = SKLabelNode(fontNamed: uiFontBold)
+        label.text = ""
+        label.fontSize = 13
+        label.fontColor = theme.statusTextColor.skColor
+        label.verticalAlignmentMode = .center
+        label.horizontalAlignmentMode = .center
+        label.name = "friendsRankTile"
+        container.addChild(label)
+
+        GameCenterManager.shared.loadFriendsRank(for: .bestWinStreak) { [weak container, weak label] rank, total in
+            guard let container = container, let label = label else { return }
+            guard let rank = rank, let total = total, total > 0 else {
+                container.removeFromParent()
+                return
+            }
+            label.text = "🏅 #\(rank) of \(total) friends"
+            container.run(SKAction.fadeIn(withDuration: 0.4))
+        }
     }
 
     private func setupCoinDisplay() {
@@ -601,6 +684,8 @@ class MenuScene: SKScene {
     private let buttonGray = SKColor(red: 0.60, green: 0.62, blue: 0.58, alpha: 1.0)
 
     private func setupMenuButtons() {
+        setupDailyPuzzleRibbon()
+
         let baseY = size.height / 2 + 100
         let spacing: CGFloat = 72
 
@@ -686,6 +771,44 @@ class MenuScene: SKScene {
         )
     }
 
+    private func setupDailyPuzzleRibbon() {
+        let solved = PuzzleManager.shared.hasSolvedToday
+        let reward = PuzzleManager.shared.todaysPuzzle.reward
+
+        let container = SKNode()
+        container.position = CGPoint(x: size.width / 2, y: size.height / 2 + 165)
+        container.zPosition = 12
+        container.name = "dailyPuzzle"
+        addChild(container)
+
+        let bg = SKShapeNode(rectOf: CGSize(width: 300, height: 44), cornerRadius: 22)
+        bg.fillColor = solved ? buttonGray.withAlphaComponent(0.7) : gold
+        bg.strokeColor = solved ? SKColor.gray.withAlphaComponent(0.4) : SKColor(red: 0.7, green: 0.55, blue: 0.2, alpha: 1.0)
+        bg.lineWidth = 1.5
+        bg.name = "dailyPuzzle"
+        container.addChild(bg)
+
+        let label = SKLabelNode(fontNamed: uiFontBold)
+        if solved {
+            label.text = isZenTheme ? "🧩 今日のパズル ✓" : "🧩 Daily Puzzle  ✓ Solved"
+            label.fontColor = SKColor.white.withAlphaComponent(0.9)
+        } else {
+            label.text = isZenTheme ? "🧩 今日のパズル · +\(reward) 🪙" : "🧩 Daily Puzzle · Earn +\(reward) 🪙"
+            label.fontColor = SKColor(red: 0.30, green: 0.22, blue: 0.10, alpha: 1.0)
+        }
+        label.fontSize = 14
+        label.verticalAlignmentMode = .center
+        label.name = "dailyPuzzle"
+        container.addChild(label)
+    }
+
+    private func showDailyPuzzle() {
+        let transition = SKTransition.fade(withDuration: 0.4)
+        let scene = PuzzleScene(size: size)
+        scene.scaleMode = .aspectFill
+        view?.presentScene(scene, transition: transition)
+    }
+
     private func createMenuButton(title: String, subtitle: String, color: SKColor, position: CGPoint, name: String) {
         let container = SKNode()
         container.position = position
@@ -737,7 +860,7 @@ class MenuScene: SKScene {
 
         for node in nodes {
             guard let name = node.name else { continue }
-            if ["playAI", "playFriend", "playOnline", "continueOnlineMatch", "statistics", "settings", "howToPlay", "gameCenter", "shopButton"].contains(name) {
+            if ["playAI", "playFriend", "playOnline", "continueOnlineMatch", "statistics", "settings", "howToPlay", "gameCenter", "shopButton", "friendsRankTile", "dailyPuzzle"].contains(name) {
                 if let parent = findButtonContainer(node) {
                     parent.run(SKAction.scale(to: 0.96, duration: 0.1))
                 }
@@ -753,6 +876,7 @@ class MenuScene: SKScene {
 
         let hasDifficultyOverlay = children.contains { $0.name == "difficultyOverlay" }
         let hasContinuePrompt = children.contains { $0.name == "continuePromptOverlay" }
+        let hasDailyBonusPrompt = children.contains { $0.name == "dailyBonusOverlay" }
 
         for node in nodes {
             guard let name = node.name else { continue }
@@ -761,7 +885,9 @@ class MenuScene: SKScene {
                 parent.run(SKAction.scale(to: 1.0, duration: 0.1))
             }
 
-            if hasContinuePrompt {
+            if hasDailyBonusPrompt {
+                handleDailyBonusSelection(name: name)
+            } else if hasContinuePrompt {
                 handleContinuePromptSelection(name: name)
             } else if hasDifficultyOverlay {
                 handleDifficultySelection(name: name)
@@ -804,6 +930,8 @@ class MenuScene: SKScene {
         case "settings": showSettings()
         case "howToPlay": showHowToPlay()
         case "gameCenter": showGameCenter()
+        case "friendsRankTile": showFriendsLeaderboard()
+        case "dailyPuzzle": showDailyPuzzle()
         case "shopButton": showShop()
         default: break
         }
@@ -1140,6 +1268,125 @@ class MenuScene: SKScene {
         }
     }
 
+    // MARK: - Daily Bonus Prompt
+
+    private func showDailyBonusPrompt() {
+        guard let result = CoinManager.shared.claimDailyBonusIfAvailable() else { return }
+
+        let overlayColor = theme.statusTextColor.skColor
+
+        let overlay = SKShapeNode(rect: CGRect(x: 0, y: 0, width: size.width, height: size.height))
+        overlay.fillColor = overlayColor.withAlphaComponent(0.5)
+        overlay.strokeColor = .clear
+        overlay.zPosition = 100
+        overlay.name = "dailyBonusOverlay"
+        overlay.alpha = 0
+        addChild(overlay)
+        overlay.run(SKAction.fadeAlpha(to: 1.0, duration: 0.25))
+
+        let modal = SKShapeNode(rectOf: CGSize(width: 300, height: 280), cornerRadius: 16)
+        modal.fillColor = theme.statusBackgroundColor.skColor
+        modal.strokeColor = gold.withAlphaComponent(0.7)
+        modal.lineWidth = 2
+        modal.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        modal.zPosition = 101
+        modal.name = "dailyBonusOverlay"
+        modal.setScale(0.9)
+        modal.alpha = 0
+        addChild(modal)
+        modal.run(SKAction.group([
+            SKAction.fadeIn(withDuration: 0.25),
+            SKAction.scale(to: 1.0, duration: 0.25)
+        ]))
+
+        let title = SKLabelNode(fontNamed: uiFontBold)
+        title.text = isZenTheme ? "毎日のボーナス" : "Daily Bonus!"
+        title.fontSize = 24
+        title.fontColor = gold
+        title.position = CGPoint(x: size.width / 2, y: size.height / 2 + 95)
+        title.zPosition = 102
+        title.name = "dailyBonusOverlay"
+        title.alpha = 0
+        addChild(title)
+        title.run(SKAction.fadeIn(withDuration: 0.25))
+
+        let coinLine = SKLabelNode(fontNamed: uiFontBold)
+        coinLine.text = "+\(result.coinsAwarded) 🪙"
+        coinLine.fontSize = 36
+        coinLine.fontColor = theme.statusTextColor.skColor
+        coinLine.position = CGPoint(x: size.width / 2, y: size.height / 2 + 40)
+        coinLine.zPosition = 102
+        coinLine.name = "dailyBonusOverlay"
+        coinLine.alpha = 0
+        addChild(coinLine)
+        coinLine.run(SKAction.fadeIn(withDuration: 0.25))
+
+        let streakLine = SKLabelNode(fontNamed: uiFont)
+        let streakText: String
+        if isZenTheme {
+            streakText = "連続 \(result.streak) 日目"
+        } else if result.streak == 1 {
+            streakText = result.isStreakContinuation ? "Day 1 — Welcome back!" : "Day 1 — Streak started!"
+        } else {
+            streakText = "Day \(result.streak) streak — keep it going!"
+        }
+        streakLine.text = streakText
+        streakLine.fontSize = 15
+        streakLine.fontColor = theme.statusTextColor.skColor.withAlphaComponent(0.85)
+        streakLine.position = CGPoint(x: size.width / 2, y: size.height / 2 + 5)
+        streakLine.zPosition = 102
+        streakLine.name = "dailyBonusOverlay"
+        streakLine.alpha = 0
+        addChild(streakLine)
+        streakLine.run(SKAction.fadeIn(withDuration: 0.25))
+
+        let claimBtn = SKShapeNode(rectOf: CGSize(width: 220, height: 52), cornerRadius: 12)
+        claimBtn.fillColor = buttonGreen
+        claimBtn.strokeColor = .clear
+        claimBtn.position = CGPoint(x: size.width / 2, y: size.height / 2 - 65)
+        claimBtn.zPosition = 102
+        claimBtn.name = "dailyBonusClaim"
+        claimBtn.alpha = 0
+        addChild(claimBtn)
+        claimBtn.run(SKAction.fadeIn(withDuration: 0.25))
+
+        let claimLabel = SKLabelNode(fontNamed: uiFontBold)
+        claimLabel.text = isZenTheme ? "受け取る" : "Awesome!"
+        claimLabel.fontSize = 18
+        claimLabel.fontColor = .white
+        claimLabel.verticalAlignmentMode = .center
+        claimLabel.position = CGPoint(x: size.width / 2, y: size.height / 2 - 65)
+        claimLabel.zPosition = 103
+        claimLabel.name = "dailyBonusClaim"
+        claimLabel.alpha = 0
+        addChild(claimLabel)
+        claimLabel.run(SKAction.fadeIn(withDuration: 0.25))
+    }
+
+    private func hideDailyBonusPrompt() {
+        for nodeName in ["dailyBonusOverlay", "dailyBonusClaim"] {
+            enumerateChildNodes(withName: nodeName) { node, _ in
+                node.run(SKAction.sequence([SKAction.fadeOut(withDuration: 0.2), SKAction.removeFromParent()]))
+            }
+        }
+    }
+
+    private func handleDailyBonusSelection(name: String) {
+        guard name == "dailyBonusClaim" || name == "dailyBonusOverlay" else { return }
+        SoundManager.shared.buttonTapped()
+        hideDailyBonusPrompt()
+
+        // After dismissing the bonus, surface the continue prompt if needed
+        if !MenuScene.hasShownContinuePrompt && GameStateManager.shared.hasSavedGame {
+            MenuScene.hasShownContinuePrompt = true
+            let wait = SKAction.wait(forDuration: 0.25)
+            let showPrompt = SKAction.run { [weak self] in
+                self?.showContinuePrompt()
+            }
+            run(SKAction.sequence([wait, showPrompt]))
+        }
+    }
+
     // MARK: - Navigation
 
     private func startGame(mode: GameMode, difficulty: AIDifficulty, isPractice: Bool = false) {
@@ -1180,10 +1427,11 @@ class MenuScene: SKScene {
         view?.presentScene(scene, transition: transition)
     }
 
-    private func showHowToPlay() {
+    private func showHowToPlay(isOnboarding: Bool = false) {
         let transition = SKTransition.fade(withDuration: 0.4)
         let scene = HowToPlayScene(size: size)
         scene.scaleMode = .aspectFill
+        scene.isOnboardingMode = isOnboarding
         view?.presentScene(scene, transition: transition)
     }
 
@@ -1219,6 +1467,21 @@ class MenuScene: SKScene {
         }
         guard let vc = view?.window?.rootViewController else { return }
         let gcVC = GKGameCenterViewController(state: .default)
+        gcVC.gameCenterDelegate = self
+        vc.present(gcVC, animated: true)
+    }
+
+    private func showFriendsLeaderboard() {
+        guard GameCenterManager.shared.isAuthenticated else {
+            showNotAuthenticatedAlert()
+            return
+        }
+        guard let vc = view?.window?.rootViewController else { return }
+        let gcVC = GKGameCenterViewController(
+            leaderboardID: LeaderboardID.bestWinStreak.rawValue,
+            playerScope: .friendsOnly,
+            timeScope: .allTime
+        )
         gcVC.gameCenterDelegate = self
         vc.present(gcVC, animated: true)
     }

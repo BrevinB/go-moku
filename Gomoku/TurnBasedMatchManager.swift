@@ -589,6 +589,52 @@ class TurnBasedMatchManager {
         return nil
     }
 
+    // MARK: - Idle-Match Reminders
+
+    private let reminderHistoryKey = "matchReminderHistory"
+    private let reminderIdleThreshold: TimeInterval = 24 * 60 * 60
+    private let reminderCooldown: TimeInterval = 24 * 60 * 60
+
+    /// For every active match where the opponent has been on the clock for more than 24h,
+    /// poke them via GameKit. Per-match cooldown prevents spamming on every foreground.
+    func sendRemindersForIdleMatches() {
+        guard GameCenterManager.shared.isAuthenticated else { return }
+
+        let matches = GameCenterManager.shared.activeMatches
+        let now = Date()
+        var history = (UserDefaults.standard.dictionary(forKey: reminderHistoryKey) as? [String: Date]) ?? [:]
+
+        for match in matches {
+            guard match.status == .open else { continue }
+            guard let currentParticipant = match.currentParticipant else { continue }
+            // Skip if it's our turn — nothing to remind anyone about.
+            if currentParticipant.player == GKLocalPlayer.local { continue }
+            // Skip if the opponent slot is unfilled (no one to remind).
+            guard currentParticipant.player != nil else { continue }
+
+            let referenceDate = currentParticipant.lastTurnDate ?? match.creationDate
+            guard now.timeIntervalSince(referenceDate) >= reminderIdleThreshold else { continue }
+
+            if let last = history[match.matchID], now.timeIntervalSince(last) < reminderCooldown {
+                continue
+            }
+
+            let playerName = GKLocalPlayer.local.displayName
+            match.sendReminder(
+                to: [currentParticipant],
+                localizableMessageKey: "%@ is waiting on your move!",
+                arguments: [playerName]
+            ) { error in
+                if let error = error {
+                    print("TurnBasedMatchManager: sendReminder failed for match \(match.matchID) — \(error.localizedDescription)")
+                }
+            }
+            history[match.matchID] = now
+        }
+
+        UserDefaults.standard.set(history, forKey: reminderHistoryKey)
+    }
+
     /// Reload match data from server
     func refreshMatch(completion: @escaping (MatchError?) -> Void) {
         guard NetworkMonitor.shared.isConnected else {

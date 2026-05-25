@@ -131,6 +131,32 @@ class GameCenterManager: NSObject {
         }
     }
 
+    /// Loads the friends-only ranking for a leaderboard. Returns (rank, totalFriends).
+    /// Both values are nil if the user isn't authenticated, has no friends on the leaderboard,
+    /// or the call fails.
+    func loadFriendsRank(
+        for leaderboard: LeaderboardID,
+        completion: @escaping (_ rank: Int?, _ totalFriends: Int?) -> Void
+    ) {
+        guard isAuthenticated else {
+            completion(nil, nil)
+            return
+        }
+
+        GKLeaderboard.loadLeaderboards(IDs: [leaderboard.rawValue]) { boards, error in
+            guard let board = boards?.first, error == nil else {
+                DispatchQueue.main.async { completion(nil, nil) }
+                return
+            }
+            board.loadEntries(for: .friendsOnly, timeScope: .allTime, range: NSRange(location: 1, length: 100)) { localEntry, entries, _, _ in
+                DispatchQueue.main.async {
+                    let total = entries?.count
+                    completion(localEntry?.rank, total)
+                }
+            }
+        }
+    }
+
     func showLeaderboards(from viewController: UIViewController) {
         guard isAuthenticated else { return }
 

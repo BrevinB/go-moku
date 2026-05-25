@@ -424,8 +424,12 @@ class ReplayScene: SKScene {
         let stoneRadius = cellSize * 0.43
         let stone = SKShapeNode(circleOfRadius: stoneRadius)
 
-        let stoneColor = player == .black ? theme.blackStoneColor : theme.whiteStoneColor
-        let highlightColor = player == .black ? theme.blackStoneHighlight : theme.whiteStoneHighlight
+        let stoneColor = player == .black
+            ? StoneSkinManager.shared.blackStoneColor(theme: theme)
+            : StoneSkinManager.shared.whiteStoneColor(theme: theme)
+        let highlightColor = player == .black
+            ? StoneSkinManager.shared.blackHighlightColor(theme: theme)
+            : StoneSkinManager.shared.whiteHighlightColor(theme: theme)
 
         stone.fillColor = stoneColor.skColor
         stone.strokeColor = highlightColor.skColor.withAlphaComponent(0.8)

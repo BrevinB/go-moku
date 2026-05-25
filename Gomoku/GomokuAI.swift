@@ -49,13 +49,16 @@ class GomokuAI {
     }
 
     func findBestMove(board: GomokuBoard, player: Player) -> (row: Int, col: Int)? {
-        // Only hard mode uses opening book, and only for first 2 moves
-        if difficulty == .hard {
-            let moveCount = board.getMoveHistory().count
-            if moveCount < 2 {
-                if let bookMove = OpeningBook.shared.getBookMove(board: board, player: player) {
-                    return bookMove
-                }
+        // Opening book usage scales with difficulty so easy mode still feels beatable.
+        let bookCutoff: Int
+        switch difficulty {
+        case .easy:   bookCutoff = 2
+        case .medium: bookCutoff = 4
+        case .hard:   bookCutoff = 8
+        }
+        if board.getMoveHistory().count < bookCutoff {
+            if let bookMove = OpeningBook.shared.getBookMove(board: board, player: player) {
+                return bookMove
             }
         }
 

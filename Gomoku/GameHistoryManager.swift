@@ -10,7 +10,7 @@ import Foundation
 class GameHistoryManager {
     static let shared = GameHistoryManager()
     private let key = "completedGamesHistory"
-    private let maxStoredGames = 10
+    private let maxStoredGames = 50
 
     private(set) var games: [CompletedGame] = []
 
